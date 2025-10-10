@@ -92,6 +92,14 @@ class OptionsPage {
       return;
     }
 
+    // Validate URL format
+    try {
+      new URL(apiUrl);
+    } catch (error) {
+      this.showError('Invalid API URL format. Please enter a valid URL (e.g., http://localhost:27123)');
+      return;
+    }
+
     this.elements.testBtn.disabled = true;
     this.elements.testBtn.textContent = 'Testing...';
 
@@ -111,7 +119,13 @@ class OptionsPage {
       }
     } catch (error) {
       console.error('Connection test error:', error);
-      this.showError('✗ Connection failed. Make sure Obsidian is running and the Local REST API plugin is enabled.');
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        this.showError('✗ Network error. Make sure Obsidian is running and the Local REST API plugin is enabled.');
+      } else if (error.name === 'AbortError') {
+        this.showError('✗ Connection timeout. Check if Obsidian is running.');
+      } else {
+        this.showError(`✗ Connection failed: ${error.message}`);
+      }
     } finally {
       this.elements.testBtn.disabled = false;
       this.elements.testBtn.textContent = 'Test Connection';

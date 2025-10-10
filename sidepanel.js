@@ -1,5 +1,8 @@
 // Side panel script for Obsidian Web Page Notes
 
+// Constants
+const NOTE_HEADER_REGEX = /^(# .*?\n\n\*\*URL:\*\*.*?\n\*\*Date:\*\*.*?\n\n---\n\n)/s;
+
 class ObsidianAPI {
   constructor() {
     this.baseUrl = '';
@@ -30,11 +33,18 @@ class ObsidianAPI {
 
   getFilePath(url) {
     // Create a safe filename from URL
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname.replace(/^www\./, '');
-    const path = urlObj.pathname.replace(/\//g, '-').replace(/^-/, '').replace(/-$/, '') || 'index';
-    const safeName = `${domain}${path}`.replace(/[^a-zA-Z0-9-_]/g, '_');
-    return `${this.notesPath}/${safeName}.md`;
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.replace(/^www\./, '');
+      const path = urlObj.pathname.replace(/\//g, '-').replace(/^-/, '').replace(/-$/, '') || 'index';
+      const safeName = `${domain}${path}`.replace(/[^a-zA-Z0-9-_]/g, '_');
+      return `${this.notesPath}/${safeName}.md`;
+    } catch (error) {
+      console.error('Invalid URL:', url, error);
+      // Fallback to a safe default filename
+      const safeName = url.replace(/[^a-zA-Z0-9-_]/g, '_').substring(0, 100);
+      return `${this.notesPath}/${safeName}.md`;
+    }
   }
 
   async getNote(url) {
@@ -89,7 +99,7 @@ class ObsidianAPI {
         }
       } else {
         // Update existing note - preserve the header but update content
-        const headerMatch = existingNote.match(/^(# .*?\n\n\*\*URL:\*\*.*?\n\*\*Date:\*\*.*?\n\n---\n\n)/s);
+        const headerMatch = existingNote.match(NOTE_HEADER_REGEX);
         let updatedContent;
         
         if (headerMatch) {
@@ -208,8 +218,8 @@ class SidePanelApp {
       
       if (note) {
         // Extract the content after the header
-        const contentMatch = note.match(/^# .*?\n\n\*\*URL:\*\*.*?\n\*\*Date:\*\*.*?\n\n---\n\n([\s\S]*)$/);
-        const content = contentMatch ? contentMatch[1] : note;
+        const contentMatch = note.match(NOTE_HEADER_REGEX);
+        const content = contentMatch ? note.substring(contentMatch[0].length) : note;
         this.elements.noteEditor.value = content;
         this.elements.lastSaved.textContent = '✓ Loaded from Obsidian';
       } else {
