@@ -24,8 +24,8 @@ The implementation also keeps event-based saves as fallbacks:
 
 Both event handlers will:
 - Cancel any pending auto-save timeout
-- Send save request through the port (primary mechanism - only sends if port exists)
-- Attempt direct save using `saveNote(true)` (fallback - runs in side panel context, may not complete if panel closes too quickly)
+- Send save request through the port (primary mechanism - save executes in background after panel disconnect)
+- Attempt direct save using `saveNote(true)` (fallback - the `true` parameter indicates auto-save mode with silent operation; runs in side panel context and may not complete if panel closes too quickly)
 - Save only if there's content, a valid URL, and no save in progress
 
 The direct save fallback is useful for:
