@@ -22,11 +22,16 @@ The implementation also keeps event-based saves as fallbacks:
 1. **visibilitychange** - Triggers when the side panel becomes hidden
 2. **pagehide** - Triggers when the side panel is unloaded/closed
 
-Both mechanisms will:
+Both event handlers will:
 - Cancel any pending auto-save timeout
-- Send save request through the port (primary)
-- Attempt direct save (fallback, may not complete in time)
+- Send save request through the port (primary mechanism - only sends if port exists)
+- Attempt direct save using `saveNote(true)` (fallback - runs in side panel context, may not complete if panel closes too quickly)
 - Save only if there's content, a valid URL, and no save in progress
+
+The direct save fallback is useful for:
+- Cases where the port connection fails or is unavailable
+- Browser compatibility issues
+- Providing an immediate save attempt while the background save is queued
 
 ## How to Test
 
@@ -89,6 +94,10 @@ Both mechanisms will:
   1. Go to chrome://extensions/
   2. Find "Obsidian Web Page Notes"
   3. Click "service worker" link to open background script console
+  4. **Note**: Service workers may become inactive after periods of inactivity. If you don't see logs, try:
+     - Reloading the extension (click the reload icon)
+     - Opening the side panel again to wake up the service worker
+     - The console will show "service worker (inactive)" if it's sleeping
 
 ## Notes
 - The save-on-exit feature works independently of the auto-save setting
