@@ -273,11 +273,8 @@ class SidePanelApp {
   async saveNote(isAutoSave = false) {
     if (!this.currentUrl) return;
 
-    // Skip auto-save if a save is already in progress
-    if (isAutoSave && this.isLoading) return;
-    
-    // Block manual save if already saving
-    if (!isAutoSave && this.isLoading) return;
+    // Skip if a save is already in progress
+    if (this.isLoading) return;
 
     const content = this.elements.noteEditor.value.trim();
     
