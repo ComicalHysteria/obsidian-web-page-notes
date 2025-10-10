@@ -68,6 +68,7 @@ Both events will:
 - Look for "Error saving on close:" messages which indicate save failures
 
 ## Notes
-- The feature works with the existing auto-save functionality
-- If auto-save is disabled in settings, this feature will still save on exit
+- The save-on-exit feature works independently of the auto-save setting
+- Even if auto-save is disabled in settings, notes will still be saved when you close the panel
+- This provides an extra layer of protection against data loss
 - The save operation uses the same `saveNote` method as manual and auto-saves
