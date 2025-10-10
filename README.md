@@ -7,6 +7,7 @@ Unofficial Chrome extension for Obsidian that lets you take notes for webpages i
 - 📝 Take notes about any webpage directly in a Chrome side panel
 - 🔄 Automatically syncs with Obsidian via the Local REST API plugin
 - 💾 Saves notes as Markdown files in your Obsidian vault
+- ⚡ Auto-save functionality that saves as you type (configurable)
 - 🔍 Retrieves previously created notes for any webpage
 - ✏️ Edit and update existing notes seamlessly
 - 🌐 Organized by URL with metadata (title, URL, timestamp)
@@ -49,6 +50,8 @@ _Extension is pending publication_
    - **API URL**: `http://localhost:27123` (default)
    - **API Key**: Paste the key from Obsidian
    - **Notes Folder**: `WebPageNotes` (or your preferred folder)
+   - **Auto-Save**: Enable/disable auto-save (enabled by default)
+   - **Auto-Save Delay**: Set delay in seconds (1-30 seconds, default: 2)
 4. Click "Test Connection" to verify
 5. Click "Save Settings"
 
@@ -58,7 +61,7 @@ _Extension is pending publication_
 2. Click the extension icon or press the extension keyboard shortcut
 3. The side panel will open showing any existing notes for that page
 4. Write or edit your notes in Markdown format
-5. Click "Save to Obsidian" to sync your notes
+5. Your notes will auto-save as you type (if enabled), or click "Save to Obsidian" to save manually
 6. Your notes are saved in your Obsidian vault under the configured folder
 
 ### Notes Organization
@@ -77,7 +80,8 @@ Example: `github.com-obsidian-plugin.md`
 ### Side Panel Interface
 - **Current Page Info**: Shows the title and URL of the current page
 - **Note Editor**: Markdown-enabled text area for writing notes
-- **Save Button**: Saves notes to Obsidian
+- **Auto-Save**: Automatically saves notes as you type (with configurable delay)
+- **Save Button**: Manually saves notes to Obsidian
 - **Refresh Button**: Reloads the note from Obsidian
 - **Connection Status**: Shows real-time connection status to Obsidian
 
@@ -85,6 +89,8 @@ Example: `github.com-obsidian-plugin.md`
 - Configure Obsidian API connection
 - Test connection to verify setup
 - Customize notes folder location
+- Enable/disable auto-save functionality
+- Configure auto-save delay (1-30 seconds)
 - Clear and helpful setup instructions
 
 ## Troubleshooting
