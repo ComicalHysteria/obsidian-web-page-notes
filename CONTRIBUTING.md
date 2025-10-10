@@ -4,6 +4,12 @@ Thank you for your interest in contributing! This extension is built with vanill
 
 ## Development Setup
 
+### Prerequisites
+- Google Chrome or Chromium-based browser
+- Obsidian with Local REST API plugin installed
+- Node.js (optional, for JavaScript validation)
+
+### Setup Steps
 1. Clone the repository
 2. Make your changes
 3. Test by loading the extension unpacked in Chrome (`chrome://extensions/`)
@@ -65,8 +71,8 @@ obsidian-web-page-notes/
 
 ### Code Quality
 
-- Validate JavaScript with `node --check <file>`
-- Check for console errors
+- Validate JavaScript with `node --check <file>` (if Node.js is installed)
+- Check for console errors in Chrome DevTools
 - Handle errors gracefully
 - Provide meaningful error messages to users
 

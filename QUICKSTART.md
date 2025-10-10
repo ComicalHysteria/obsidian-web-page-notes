@@ -11,7 +11,7 @@
 
 ### 2. Get Your API Key
 1. In Obsidian: Settings → Local REST API
-2. Click "Show API Key" 
+2. Click "Show API Key"
 3. Copy the API key (you'll need it in step 4)
 
 ### 3. Install This Extension
