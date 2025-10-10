@@ -138,6 +138,9 @@ class SidePanelApp {
     this.currentUrl = '';
     this.currentTitle = '';
     this.isLoading = false;
+    this.autoSaveEnabled = true;
+    this.autoSaveDelay = 2000; // milliseconds
+    this.autoSaveTimeout = null;
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
@@ -156,15 +159,36 @@ class SidePanelApp {
 
   async init() {
     await this.api.loadSettings();
+    await this.loadAutoSaveSettings();
     this.attachEventListeners();
     await this.loadCurrentTab();
     await this.checkConnection();
+  }
+
+  async loadAutoSaveSettings() {
+    try {
+      const settings = await chrome.storage.sync.get(['autoSaveEnabled', 'autoSaveDelay']);
+      this.autoSaveEnabled = settings.autoSaveEnabled !== undefined ? settings.autoSaveEnabled : true;
+      this.autoSaveDelay = (settings.autoSaveDelay || 2) * 1000; // Convert to milliseconds
+    } catch (error) {
+      console.error('Error loading auto-save settings:', error);
+      // Use defaults
+      this.autoSaveEnabled = true;
+      this.autoSaveDelay = 2000;
+    }
   }
 
   attachEventListeners() {
     this.elements.saveBtn.addEventListener('click', () => this.saveNote());
     this.elements.refreshBtn.addEventListener('click', () => this.loadCurrentTab());
     this.elements.settingsBtn.addEventListener('click', () => chrome.runtime.openOptionsPage());
+
+    // Auto-save on input
+    this.elements.noteEditor.addEventListener('input', () => {
+      if (this.autoSaveEnabled) {
+        this.scheduleAutoSave();
+      }
+    });
 
     // Listen for tab updates from background script
     chrome.runtime.onMessage.addListener((message) => {
@@ -234,27 +258,58 @@ class SidePanelApp {
     }
   }
 
-  async saveNote() {
-    if (!this.currentUrl || this.isLoading) return;
+  scheduleAutoSave() {
+    // Clear existing timeout
+    if (this.autoSaveTimeout) {
+      clearTimeout(this.autoSaveTimeout);
+    }
+
+    // Schedule new auto-save
+    this.autoSaveTimeout = setTimeout(() => {
+      this.saveNote(true);
+    }, this.autoSaveDelay);
+  }
+
+  async saveNote(isAutoSave = false) {
+    if (!this.currentUrl) return;
+
+    // Skip if a save is already in progress
+    if (this.isLoading) return;
 
     const content = this.elements.noteEditor.value.trim();
     
     if (!content) {
-      this.showWarning('Note is empty');
+      if (!isAutoSave) {
+        this.showWarning('Note is empty');
+      }
       return;
     }
 
-    this.setLoading(true);
+    // Only show loading state for manual saves
+    if (!isAutoSave) {
+      this.setLoading(true);
+    } else {
+      // For auto-save, just set the flag to prevent concurrent saves
+      this.isLoading = true;
+    }
     
     try {
       await this.api.saveNote(this.currentUrl, this.currentTitle, content);
-      this.showSuccess('Note saved to Obsidian!');
+      if (!isAutoSave) {
+        this.showSuccess('Note saved to Obsidian!');
+      }
       this.elements.lastSaved.textContent = `✓ Saved at ${new Date().toLocaleTimeString()}`;
     } catch (error) {
       console.error('Error saving note:', error);
-      this.showError('Failed to save note. Check your settings.');
+      if (!isAutoSave) {
+        this.showError('Failed to save note. Check your settings.');
+      }
     } finally {
-      this.setLoading(false);
+      if (!isAutoSave) {
+        this.setLoading(false);
+      } else {
+        this.isLoading = false;
+      }
     }
   }
 

@@ -7,6 +7,8 @@ class OptionsPage {
       apiUrl: document.getElementById('api-url'),
       apiKey: document.getElementById('api-key'),
       notesPath: document.getElementById('notes-path'),
+      autoSaveEnabled: document.getElementById('auto-save-enabled'),
+      autoSaveDelay: document.getElementById('auto-save-delay'),
       testBtn: document.getElementById('test-connection'),
       statusMessage: document.getElementById('status-message')
     };
@@ -21,7 +23,7 @@ class OptionsPage {
 
   async loadSettings() {
     try {
-      const settings = await chrome.storage.sync.get(['apiUrl', 'apiKey', 'notesPath']);
+      const settings = await chrome.storage.sync.get(['apiUrl', 'apiKey', 'notesPath', 'autoSaveEnabled', 'autoSaveDelay']);
       
       if (settings.apiUrl) {
         this.elements.apiUrl.value = settings.apiUrl;
@@ -34,6 +36,10 @@ class OptionsPage {
       if (settings.notesPath) {
         this.elements.notesPath.value = settings.notesPath;
       }
+
+      // Load auto-save settings with defaults
+      this.elements.autoSaveEnabled.checked = settings.autoSaveEnabled !== undefined ? settings.autoSaveEnabled : true;
+      this.elements.autoSaveDelay.value = settings.autoSaveDelay || 2;
     } catch (error) {
       console.error('Error loading settings:', error);
       this.showError('Failed to load settings');
@@ -55,7 +61,9 @@ class OptionsPage {
     const settings = {
       apiUrl: this.elements.apiUrl.value.trim(),
       apiKey: this.elements.apiKey.value.trim(),
-      notesPath: this.elements.notesPath.value.trim() || 'WebPageNotes'
+      notesPath: this.elements.notesPath.value.trim() || 'WebPageNotes',
+      autoSaveEnabled: this.elements.autoSaveEnabled.checked,
+      autoSaveDelay: parseInt(this.elements.autoSaveDelay.value, 10) || 2
     };
 
     // Validate settings
@@ -66,6 +74,12 @@ class OptionsPage {
 
     if (!settings.apiKey) {
       this.showError('API Key is required');
+      return;
+    }
+
+    // Validate auto-save delay
+    if (settings.autoSaveDelay < 1 || settings.autoSaveDelay > 30) {
+      this.showError('Auto-save delay must be between 1 and 30 seconds');
       return;
     }
 
