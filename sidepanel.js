@@ -190,6 +190,35 @@ class SidePanelApp {
       }
     });
 
+    // Save notes before the side panel closes or becomes hidden
+    const saveOnExit = () => {
+      // Cancel any pending auto-save
+      if (this.autoSaveTimeout) {
+        clearTimeout(this.autoSaveTimeout);
+      }
+      
+      // Save if there's content and we're not already saving
+      const content = this.elements.noteEditor.value.trim();
+      if (content && this.currentUrl && !this.isLoading) {
+        // Trigger save when panel is being closed or hidden
+        try {
+          this.saveNote(true);
+        } catch (error) {
+          console.error('Error saving on close:', error);
+        }
+      }
+    };
+
+    // Handle visibility changes (when side panel is hidden but not closed)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        saveOnExit();
+      }
+    });
+
+    // Handle page unload (when side panel is actually closed)
+    window.addEventListener('pagehide', saveOnExit);
+
     // Listen for tab updates from background script
     chrome.runtime.onMessage.addListener((message) => {
       if (message.type === 'TAB_UPDATED') {
