@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obsidian Web Page Notes</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📝 Web Page Notes</h1>
+      <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+    </header>
+    
+    <div id="status-message" class="status-message hidden"></div>
+    
+    <div class="page-info">
+      <div class="page-title" id="page-title">Loading...</div>
+      <div class="page-url" id="page-url"></div>
+    </div>
+    
+    <div class="editor-container">
+      <div class="editor-header">
+        <button id="save-btn" class="btn btn-primary">Save to Obsidian</button>
+        <button id="refresh-btn" class="btn btn-secondary">Refresh</button>
+      </div>
+      
+      <textarea 
+        id="note-editor" 
+        class="note-editor" 
+        placeholder="Write your notes here... (Markdown supported)"></textarea>
+      
+      <div class="editor-footer">
+        <div class="note-info" id="note-info">
+          <span id="last-saved"></span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="connection-status">
+      <span id="connection-status">⚠️ Not configured</span>
+    </div>
+  </div>
+  
+  <script src="sidepanel.js"></script>
+</body>
+</html>
