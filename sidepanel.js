@@ -271,7 +271,13 @@ class SidePanelApp {
   }
 
   async saveNote(isAutoSave = false) {
-    if (!this.currentUrl || this.isLoading) return;
+    if (!this.currentUrl) return;
+
+    // Skip auto-save if a save is already in progress
+    if (isAutoSave && this.isLoading) return;
+    
+    // Block manual save if already saving
+    if (!isAutoSave && this.isLoading) return;
 
     const content = this.elements.noteEditor.value.trim();
     
@@ -282,7 +288,13 @@ class SidePanelApp {
       return;
     }
 
-    this.setLoading(true);
+    // Only show loading state for manual saves
+    if (!isAutoSave) {
+      this.setLoading(true);
+    } else {
+      // For auto-save, just set the flag to prevent concurrent saves
+      this.isLoading = true;
+    }
     
     try {
       await this.api.saveNote(this.currentUrl, this.currentTitle, content);
@@ -296,7 +308,11 @@ class SidePanelApp {
         this.showError('Failed to save note. Check your settings.');
       }
     } finally {
-      this.setLoading(false);
+      if (!isAutoSave) {
+        this.setLoading(false);
+      } else {
+        this.isLoading = false;
+      }
     }
   }
 
