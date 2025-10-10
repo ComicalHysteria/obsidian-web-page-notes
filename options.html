@@ -58,6 +58,35 @@
         </div>
       </div>
 
+      <div class="form-section">
+        <h2>Auto-Save</h2>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              id="auto-save-enabled" 
+              name="autoSaveEnabled"
+              checked>
+            <span>Enable auto-save</span>
+          </label>
+          <span class="help-text">Automatically save notes as you type</span>
+        </div>
+
+        <div class="form-group">
+          <label for="auto-save-delay">Auto-save delay (seconds)</label>
+          <input 
+            type="number" 
+            id="auto-save-delay" 
+            name="autoSaveDelay" 
+            placeholder="2"
+            value="2"
+            min="1"
+            max="30"
+            step="1">
+          <span class="help-text">Time to wait after you stop typing before auto-saving (1-30 seconds)</span>
+        </div>
+      </div>
+
       <div class="form-actions">
         <button type="button" id="test-connection" class="btn btn-secondary">Test Connection</button>
         <button type="submit" class="btn btn-primary">Save Settings</button>
