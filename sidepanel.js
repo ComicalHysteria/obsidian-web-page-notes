@@ -196,6 +196,13 @@ class SidePanelApp {
         this.loadCurrentTab();
       }
     });
+
+    // Listen for settings changes
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'sync' && (changes.apiUrl || changes.apiKey || changes.notesPath)) {
+        this.onSettingsChanged();
+      }
+    });
   }
 
   async loadCurrentTab() {
@@ -322,6 +329,19 @@ class SidePanelApp {
     } else {
       this.elements.connectionStatus.textContent = '⚠️ Not connected - Check settings';
       this.elements.connectionStatus.className = 'warning';
+    }
+  }
+
+  async onSettingsChanged() {
+    // Reload settings from storage
+    await this.api.loadSettings();
+    
+    // Recheck connection with new settings
+    await this.checkConnection();
+    
+    // Reload the current note with new settings
+    if (this.currentUrl) {
+      await this.loadNote();
     }
   }
 
