@@ -4,16 +4,29 @@
 This feature ensures that notes are automatically saved when the side panel is closed or becomes hidden, preventing data loss if the user closes the panel before the auto-save timer triggers.
 
 ## Implementation Details
-The feature uses two event listeners:
+The feature uses a **persistent port connection** for reliable save-on-exit:
+
+### Primary Mechanism: Persistent Port
+1. **Port Connection** - Side panel establishes a persistent connection to the background script on initialization
+2. **Save Request** - When closing, the side panel sends save data through the port
+3. **Port Disconnection** - When the side panel closes, the port automatically disconnects
+4. **Background Save** - The background script detects disconnection and performs the save operation
+
+This approach is more reliable because:
+- Background scripts persist longer than page contexts
+- The browser gives background scripts adequate time to complete operations
+- Port disconnection is a guaranteed event in Chrome extensions
+
+### Fallback Mechanisms
+The implementation also keeps event-based saves as fallbacks:
 1. **visibilitychange** - Triggers when the side panel becomes hidden
 2. **pagehide** - Triggers when the side panel is unloaded/closed
 
-Both events will:
+Both mechanisms will:
 - Cancel any pending auto-save timeout
-- Save the current note content if:
-  - There is content in the editor
-  - A current URL is set
-  - A save operation is not already in progress
+- Send save request through the port (primary)
+- Attempt direct save (fallback, may not complete in time)
+- Save only if there's content, a valid URL, and no save in progress
 
 ## How to Test
 
@@ -64,11 +77,23 @@ Both events will:
 
 ## Debugging
 - Open Chrome DevTools (F12) while the side panel is open
-- Check the Console tab for any error messages
-- Look for "Error saving on close:" messages which indicate save failures
+- Check the Console tab for messages and errors
+- Look for these key messages:
+  - "Side panel connected" - Port connection established
+  - "Received save request, will process on disconnect" - Save data buffered
+  - "Side panel disconnected" - Port disconnected (panel closing)
+  - "Processing pending save on disconnect" - Background save starting
+  - "Save completed successfully" - Background save succeeded
+  - "Error saving on disconnect:" - Background save failed
+- You can also check the background script console:
+  1. Go to chrome://extensions/
+  2. Find "Obsidian Web Page Notes"
+  3. Click "service worker" link to open background script console
 
 ## Notes
 - The save-on-exit feature works independently of the auto-save setting
 - Even if auto-save is disabled in settings, notes will still be saved when you close the panel
 - This provides an extra layer of protection against data loss
-- The save operation uses the same `saveNote` method as manual and auto-saves
+- The feature uses a **persistent port connection** for maximum reliability
+- The background script performs the actual save, which has more time to complete than the side panel context
+- A fallback direct save is also attempted but may not complete in time for very quick closes
