@@ -141,6 +141,7 @@ class SidePanelApp {
     this.autoSaveEnabled = true;
     this.autoSaveDelay = 2000; // milliseconds
     this.autoSaveTimeout = null;
+    this.port = null; // Persistent port for exit handling
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
@@ -160,9 +161,52 @@ class SidePanelApp {
   async init() {
     await this.api.loadSettings();
     await this.loadAutoSaveSettings();
+    this.setupPersistentPort();
     this.attachEventListeners();
     await this.loadCurrentTab();
     await this.checkConnection();
+  }
+
+  setupPersistentPort() {
+    // Create a persistent connection to the background script
+    // This allows the background to detect when the side panel closes
+    try {
+      this.port = chrome.runtime.connect({ name: 'sidepanel' });
+      
+      // Listen for messages from background
+      this.port.onMessage.addListener((message) => {
+        if (message.type === 'SAVE_COMPLETE') {
+          console.log('Background save completed');
+        }
+      });
+
+      // Handle port disconnection (shouldn't normally happen from our side)
+      this.port.onDisconnect.addListener(() => {
+        console.log('Port disconnected');
+        this.port = null;
+      });
+    } catch (error) {
+      console.error('Error setting up persistent port:', error);
+    }
+  }
+
+  sendSaveRequestToBackground() {
+    // Send save request through the port before it disconnects
+    if (this.port) {
+      try {
+        const content = this.elements.noteEditor.value.trim();
+        if (content && this.currentUrl) {
+          this.port.postMessage({
+            type: 'SAVE_ON_EXIT',
+            url: this.currentUrl,
+            title: this.currentTitle,
+            content: content
+          });
+        }
+      } catch (error) {
+        console.error('Error sending save request:', error);
+      }
+    }
   }
 
   async loadAutoSaveSettings() {
@@ -197,10 +241,12 @@ class SidePanelApp {
         clearTimeout(this.autoSaveTimeout);
       }
       
-      // Save if there's content and we're not already saving
+      // Send save request through persistent port for more reliable handling
+      this.sendSaveRequestToBackground();
+      
+      // Fallback: Also try to save directly (may not complete in time)
       const content = this.elements.noteEditor.value.trim();
       if (content && this.currentUrl && !this.isLoading) {
-        // Trigger save when panel is being closed or hidden
         try {
           this.saveNote(true);
         } catch (error) {
