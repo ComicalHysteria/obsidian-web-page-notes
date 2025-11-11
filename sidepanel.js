@@ -145,7 +145,8 @@ class ObsidianAPI {
 
       const data = await response.json();
       // The API returns an object with "files" array
-      const files = data.files || [];
+      // Handle both array and object formats for compatibility
+      const files = Array.isArray(data) ? data : (data.files || []);
       
       // Filter for markdown files only
       const noteFiles = files.filter(file => file.endsWith('.md'));
