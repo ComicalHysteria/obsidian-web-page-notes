@@ -10,7 +10,10 @@
   <div class="container">
     <header>
       <h1>📝 Web Page Notes</h1>
-      <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+      <div class="header-buttons">
+        <button id="all-notes-btn" class="icon-btn" title="View All Notes">📚 All Notes</button>
+        <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+      </div>
     </header>
     
     <div id="status-message" class="status-message hidden"></div>
@@ -20,7 +23,7 @@
       <div class="page-url" id="page-url"></div>
     </div>
     
-    <div class="editor-container">
+    <div id="editor-container" class="editor-container">
       <div class="editor-header">
         <button id="save-btn" class="btn btn-primary">Save to Obsidian</button>
         <button id="refresh-btn" class="btn btn-secondary">Refresh</button>
@@ -36,6 +39,14 @@
           <span id="last-saved"></span>
         </div>
       </div>
+    </div>
+
+    <div id="all-notes-container" class="all-notes-container" style="display: none;">
+      <div class="all-notes-header">
+        <h2>All Notes</h2>
+        <p class="help-text">Click on any note to open its webpage</p>
+      </div>
+      <div id="all-notes-list" class="all-notes-list"></div>
     </div>
     
     <div class="connection-status">
