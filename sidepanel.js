@@ -154,7 +154,7 @@ class ObsidianAPI {
       // Filter for markdown files only
       const noteFiles = files.filter(file => file.endsWith('.md'));
       
-      // Fetch metadata for each note
+      // Fetch metadata and content for each note
       const notes = [];
       for (const file of noteFiles) {
         try {
@@ -172,10 +172,15 @@ class ObsidianAPI {
             const urlMatch = content.match(/\*\*URL:\*\* (.+)$/m);
             
             if (titleMatch && urlMatch) {
+              // Extract note content (everything after the header)
+              const metadataMatch = content.match(NOTE_METADATA_REGEX);
+              const noteContent = metadataMatch ? content.substring(metadataMatch[0].length) : content;
+              
               notes.push({
                 filename: file,
                 title: titleMatch[1],
-                url: urlMatch[1]
+                url: urlMatch[1],
+                content: noteContent
               });
             }
           }
@@ -207,6 +212,7 @@ class SidePanelApp {
     this.isShowingAllNotes = false;
     this.viewingMode = 'current'; // 'current' or 'saved'
     this.titleUpdateTimeout = null; // For reverting visual feedback
+    this.allNotes = []; // Store all notes for filtering
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
@@ -223,7 +229,8 @@ class SidePanelApp {
       allNotesBtn: document.getElementById('all-notes-btn'),
       editorContainer: document.getElementById('editor-container'),
       allNotesContainer: document.getElementById('all-notes-container'),
-      allNotesList: document.getElementById('all-notes-list')
+      allNotesList: document.getElementById('all-notes-list'),
+      notesSearchInput: document.getElementById('notes-search-input')
     };
 
     this.init();
@@ -341,6 +348,11 @@ class SidePanelApp {
       if (areaName === 'sync' && (changes.apiUrl || changes.apiKey || changes.notesPath)) {
         this.onSettingsChanged();
       }
+    });
+
+    // Handle search input for filtering notes
+    this.elements.notesSearchInput.addEventListener('input', () => {
+      this.filterNotes();
     });
   }
 
@@ -716,39 +728,97 @@ class SidePanelApp {
     
     try {
       const notes = await this.api.listAllNotes();
+      this.allNotes = notes;
       
-      if (notes.length === 0) {
+      if (this.allNotes.length === 0) {
         this.elements.allNotesList.innerHTML = '<div class="empty-state">No notes found. Start taking notes!</div>';
         return;
       }
 
-      this.elements.allNotesList.innerHTML = '';
-      
-      notes.forEach(note => {
-        const noteItem = document.createElement('div');
-        noteItem.className = 'note-item';
-        noteItem.innerHTML = `
-          <div class="note-item-title">${this.escapeHtml(note.title)}</div>
-          <div class="note-item-url">${this.escapeHtml(note.url)}</div>
-        `;
-        
-        noteItem.addEventListener('click', async () => {
-          // Switch back to editor view and load the note
-          this.isShowingAllNotes = false;
-          this.elements.editorContainer.style.display = 'flex';
-          this.elements.allNotesContainer.style.display = 'none';
-          this.elements.allNotesBtn.textContent = '📚 All Notes';
-          
-          // Load the saved note
-          await this.loadSavedNote(note.url);
-        });
-        
-        this.elements.allNotesList.appendChild(noteItem);
-      });
+      // Clear search input when loading
+      this.elements.notesSearchInput.value = '';
+      this.renderNotes(this.allNotes);
     } catch (error) {
       console.error('Error loading all notes:', error);
       this.elements.allNotesList.innerHTML = '<div class="error-state">Failed to load notes. Check your connection.</div>';
     }
+  }
+
+  filterNotes() {
+    const query = this.elements.notesSearchInput.value.trim().toLowerCase();
+    
+    if (!query) {
+      // Show all notes if search is empty
+      this.renderNotes(this.allNotes);
+      return;
+    }
+
+    // Filter and score notes based on matches
+    const scoredNotes = this.allNotes.map(note => {
+      let score = 0;
+      const titleLower = note.title.toLowerCase();
+      const urlLower = note.url.toLowerCase();
+      const contentLower = note.content.toLowerCase();
+
+      // Title matches (highest priority - score 3)
+      if (titleLower.includes(query)) {
+        score += 3;
+        // Bonus if it's at the start of title
+        if (titleLower.startsWith(query)) {
+          score += 2;
+        }
+      }
+
+      // URL matches (medium priority - score 2)
+      if (urlLower.includes(query)) {
+        score += 2;
+      }
+
+      // Content matches (lowest priority - score 1)
+      if (contentLower.includes(query)) {
+        score += 1;
+      }
+
+      return { note, score };
+    });
+
+    // Filter notes with score > 0 and sort by score (descending)
+    const filteredNotes = scoredNotes
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.note);
+
+    if (filteredNotes.length === 0) {
+      this.elements.allNotesList.innerHTML = '<div class="empty-state">No notes match your search.</div>';
+    } else {
+      this.renderNotes(filteredNotes);
+    }
+  }
+
+  renderNotes(notes) {
+    this.elements.allNotesList.innerHTML = '';
+    
+    notes.forEach(note => {
+      const noteItem = document.createElement('div');
+      noteItem.className = 'note-item';
+      noteItem.innerHTML = `
+        <div class="note-item-title">${this.escapeHtml(note.title)}</div>
+        <div class="note-item-url">${this.escapeHtml(note.url)}</div>
+      `;
+      
+      noteItem.addEventListener('click', async () => {
+        // Switch back to editor view and load the note
+        this.isShowingAllNotes = false;
+        this.elements.editorContainer.style.display = 'flex';
+        this.elements.allNotesContainer.style.display = 'none';
+        this.elements.allNotesBtn.textContent = '📚 All Notes';
+        
+        // Load the saved note
+        await this.loadSavedNote(note.url);
+      });
+      
+      this.elements.allNotesList.appendChild(noteItem);
+    });
   }
 
   escapeHtml(text) {

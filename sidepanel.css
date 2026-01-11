@@ -308,6 +308,30 @@ header h1 {
   color: #a0a0a0;
 }
 
+.search-container {
+  margin-bottom: 12px;
+}
+
+.notes-search-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.notes-search-input:focus {
+  border-color: #667eea;
+}
+
+.notes-search-input::placeholder {
+  color: #606060;
+}
+
 .all-notes-list {
   flex: 1;
   overflow-y: auto;
