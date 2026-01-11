@@ -619,6 +619,7 @@ class SidePanelApp {
   }
 
   async saveNoteTitle() {
+    // No changes to save
     if (!this.noteTitleChanged) {
       return;
     }
@@ -635,7 +636,8 @@ class SidePanelApp {
     this.savedNoteTitle = newTitle;
     this.noteTitleChanged = false;
 
-    // Save the note with the new title
+    // Save the note with the new title if there's content
+    // If no content yet, title will be used when content is first saved
     if (this.currentUrl) {
       try {
         const content = this.elements.noteEditor.value.trim();
@@ -648,7 +650,7 @@ class SidePanelApp {
         this.showError('Failed to save title');
       }
     } else {
-      // Just update the status if no content to save yet
+      // Just update the status if no URL set yet
       this.setNoteTitleStatus('updated');
     }
   }
