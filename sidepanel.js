@@ -3,6 +3,8 @@
 // Constants
 const NOTE_HEADER_REGEX = /^(# .*?\n\n\*\*URL:\*\*.*?\n\*\*Date:\*\*.*?\n\n---\n\n)/s;
 const NOTE_METADATA_REGEX = /^# (.+)\n\n\*\*URL:\*\* (.+)\n\*\*Date:\*\* (.+)\n\n---\n\n/s;
+const DEFAULT_TITLE = 'Untitled';
+const PLACEHOLDER_URL = '#';
 
 class ObsidianAPI {
   constructor() {
@@ -269,7 +271,7 @@ class SidePanelApp {
     this.elements.pageUrl.addEventListener('click', (e) => {
       e.preventDefault();
       const url = this.elements.pageUrl.href;
-      if (url && url !== '#') {
+      if (url && url !== PLACEHOLDER_URL) {
         chrome.tabs.create({ url: url });
       }
     });
@@ -333,7 +335,7 @@ class SidePanelApp {
           tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://')) {
         this.elements.pageTitle.textContent = 'Cannot take notes for this page';
         this.elements.pageUrl.textContent = '';
-        this.elements.pageUrl.href = '#';
+        this.elements.pageUrl.href = PLACEHOLDER_URL;
         this.elements.noteEditor.disabled = true;
         this.elements.saveBtn.disabled = true;
         this.elements.noteTitleInput.disabled = true;
@@ -341,7 +343,7 @@ class SidePanelApp {
       }
 
       this.currentUrl = tab.url;
-      this.currentPageTitle = tab.title || 'Untitled';
+      this.currentPageTitle = tab.title || DEFAULT_TITLE;
       this.viewingMode = 'current';
       
       this.elements.pageTitle.textContent = this.currentPageTitle;
@@ -442,12 +444,12 @@ class SidePanelApp {
           const content = contentMatch ? note.substring(contentMatch[0].length) : note;
           
           this.currentUrl = url;
-          this.currentPageTitle = 'Untitled';
-          this.noteTitle = 'Untitled';
+          this.currentPageTitle = DEFAULT_TITLE;
+          this.noteTitle = DEFAULT_TITLE;
           
           this.elements.noteEditor.value = content;
-          this.elements.noteTitleInput.value = 'Untitled';
-          this.elements.pageTitle.textContent = 'Untitled';
+          this.elements.noteTitleInput.value = DEFAULT_TITLE;
+          this.elements.pageTitle.textContent = DEFAULT_TITLE;
           this.elements.pageUrl.textContent = url;
           this.elements.pageUrl.href = url;
         }
@@ -494,7 +496,7 @@ class SidePanelApp {
     }
 
     // Get the note title - use custom title if set, otherwise use page title
-    const titleToSave = this.noteTitle || this.currentPageTitle || 'Untitled';
+    const titleToSave = this.noteTitle || this.currentPageTitle || DEFAULT_TITLE;
 
     // Only show loading state for manual saves
     if (!isAutoSave) {
