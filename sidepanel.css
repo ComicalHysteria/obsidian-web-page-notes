@@ -95,13 +95,33 @@ header h1 {
   margin-bottom: 12px;
 }
 
+.note-title-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
 .note-title-label {
-  display: block;
   font-size: 11px;
   color: #a0a0a0;
-  margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.note-title-status {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  transition: all 0.3s;
+}
+
+.note-title-status.unsaved {
+  color: #ffd700;
+}
+
+.note-title-status.updated {
+  color: #28a745;
 }
 
 .note-title-input {
@@ -114,11 +134,21 @@ header h1 {
   font-size: 14px;
   font-weight: 600;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .note-title-input:focus {
   border-color: #667eea;
+}
+
+.note-title-input.unsaved {
+  border-color: #ffd700;
+  box-shadow: 0 0 0 1px #ffd700;
+}
+
+.note-title-input.updated {
+  border-color: #28a745;
+  box-shadow: 0 0 0 1px #28a745;
 }
 
 .note-title-input::placeholder {

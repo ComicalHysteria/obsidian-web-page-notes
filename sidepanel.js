@@ -198,17 +198,21 @@ class SidePanelApp {
     this.currentUrl = ''; // URL for saving the note
     this.currentPageTitle = ''; // Original page title
     this.noteTitle = ''; // Custom note title set by user
+    this.savedNoteTitle = ''; // Last saved note title
+    this.noteTitleChanged = false; // Track if title has unsaved changes
     this.isLoading = false;
     this.autoSaveEnabled = true;
     this.autoSaveDelay = 2000; // milliseconds
     this.autoSaveTimeout = null;
     this.isShowingAllNotes = false;
     this.viewingMode = 'current'; // 'current' or 'saved'
+    this.titleUpdateTimeout = null; // For reverting visual feedback
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
       pageUrl: document.getElementById('page-url'),
       noteTitleInput: document.getElementById('note-title-input'),
+      noteTitleStatus: document.getElementById('note-title-status'),
       noteEditor: document.getElementById('note-editor'),
       saveBtn: document.getElementById('save-btn'),
       refreshBtn: document.getElementById('refresh-btn'),
@@ -259,11 +263,30 @@ class SidePanelApp {
       }
     });
 
-    // Auto-save when note title changes
+    // Handle note title changes
     this.elements.noteTitleInput.addEventListener('input', () => {
-      this.noteTitle = this.elements.noteTitleInput.value.trim();
-      if (this.autoSaveEnabled && this.viewingMode === 'current') {
-        this.scheduleAutoSave();
+      const currentValue = this.elements.noteTitleInput.value.trim();
+      
+      // Check if title has changed from saved state
+      if (currentValue !== this.savedNoteTitle) {
+        this.noteTitleChanged = true;
+        this.setNoteTitleStatus('unsaved');
+      } else {
+        this.noteTitleChanged = false;
+        this.setNoteTitleStatus('');
+      }
+    });
+
+    // Handle Enter key to save title
+    this.elements.noteTitleInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await this.saveNoteTitle();
+        this.elements.noteTitleInput.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.cancelNoteTitleEdit();
+        this.elements.noteTitleInput.blur();
       }
     });
 
@@ -386,6 +409,7 @@ class SidePanelApp {
           
           // Set the note title
           this.noteTitle = noteTitle;
+          this.savedNoteTitle = noteTitle;
           this.elements.noteTitleInput.value = noteTitle;
           this.elements.noteEditor.value = content;
         } else {
@@ -394,13 +418,19 @@ class SidePanelApp {
           const content = contentMatch ? note.substring(contentMatch[0].length) : note;
           this.elements.noteEditor.value = content;
           this.noteTitle = this.currentPageTitle;
+          this.savedNoteTitle = this.currentPageTitle;
           this.elements.noteTitleInput.value = this.currentPageTitle;
         }
+        this.noteTitleChanged = false;
+        this.setNoteTitleStatus('');
         this.elements.lastSaved.textContent = '✓ Loaded from Obsidian';
       } else {
         this.elements.noteEditor.value = '';
         this.noteTitle = this.currentPageTitle;
+        this.savedNoteTitle = this.currentPageTitle;
         this.elements.noteTitleInput.value = this.currentPageTitle;
+        this.noteTitleChanged = false;
+        this.setNoteTitleStatus('');
         this.elements.lastSaved.textContent = 'No existing note';
       }
     } catch (error) {
@@ -430,6 +460,7 @@ class SidePanelApp {
           
           // Set the note title and URL
           this.noteTitle = noteTitle;
+          this.savedNoteTitle = noteTitle;
           // Use the URL from note metadata for saving (not the lookup URL)
           // This preserves the original URL even if the note was found via different path
           this.currentUrl = noteUrl;
@@ -448,6 +479,7 @@ class SidePanelApp {
           this.currentUrl = url;
           this.currentPageTitle = DEFAULT_TITLE;
           this.noteTitle = DEFAULT_TITLE;
+          this.savedNoteTitle = DEFAULT_TITLE;
           
           this.elements.noteEditor.value = content;
           this.elements.noteTitleInput.value = DEFAULT_TITLE;
@@ -455,6 +487,8 @@ class SidePanelApp {
           this.elements.pageUrl.textContent = url;
           this.elements.pageUrl.href = url;
         }
+        this.noteTitleChanged = false;
+        this.setNoteTitleStatus('');
         this.elements.noteEditor.disabled = false;
         this.elements.saveBtn.disabled = false;
         this.elements.noteTitleInput.disabled = false;
@@ -551,6 +585,80 @@ class SidePanelApp {
     if (this.currentUrl) {
       await this.loadNote();
     }
+  }
+
+  setNoteTitleStatus(status) {
+    // Clear any existing timeout
+    if (this.titleUpdateTimeout) {
+      clearTimeout(this.titleUpdateTimeout);
+      this.titleUpdateTimeout = null;
+    }
+
+    // Remove all status classes
+    this.elements.noteTitleInput.classList.remove('unsaved', 'updated');
+    this.elements.noteTitleStatus.classList.remove('unsaved', 'updated');
+
+    if (status === 'unsaved') {
+      this.elements.noteTitleInput.classList.add('unsaved');
+      this.elements.noteTitleStatus.classList.add('unsaved');
+      this.elements.noteTitleStatus.textContent = 'UNSAVED CHANGES';
+    } else if (status === 'updated') {
+      this.elements.noteTitleInput.classList.add('updated');
+      this.elements.noteTitleStatus.classList.add('updated');
+      this.elements.noteTitleStatus.textContent = 'UPDATED';
+      
+      // Revert to normal after 3 seconds
+      this.titleUpdateTimeout = setTimeout(() => {
+        this.elements.noteTitleInput.classList.remove('updated');
+        this.elements.noteTitleStatus.classList.remove('updated');
+        this.elements.noteTitleStatus.textContent = '';
+      }, 3000);
+    } else {
+      this.elements.noteTitleStatus.textContent = '';
+    }
+  }
+
+  async saveNoteTitle() {
+    if (!this.noteTitleChanged) {
+      return;
+    }
+
+    const newTitle = this.elements.noteTitleInput.value.trim();
+    
+    if (!newTitle) {
+      this.showWarning('Title cannot be empty');
+      return;
+    }
+
+    // Update the note title
+    this.noteTitle = newTitle;
+    this.savedNoteTitle = newTitle;
+    this.noteTitleChanged = false;
+
+    // Save the note with the new title
+    if (this.currentUrl) {
+      try {
+        const content = this.elements.noteEditor.value.trim();
+        if (content) {
+          await this.api.saveNote(this.currentUrl, newTitle, content);
+        }
+        this.setNoteTitleStatus('updated');
+      } catch (error) {
+        console.error('Error saving note title:', error);
+        this.showError('Failed to save title');
+      }
+    } else {
+      // Just update the status if no content to save yet
+      this.setNoteTitleStatus('updated');
+    }
+  }
+
+  cancelNoteTitleEdit() {
+    // Reset to saved title
+    this.elements.noteTitleInput.value = this.savedNoteTitle;
+    this.noteTitle = this.savedNoteTitle;
+    this.noteTitleChanged = false;
+    this.setNoteTitleStatus('');
   }
 
   setLoading(loading) {
