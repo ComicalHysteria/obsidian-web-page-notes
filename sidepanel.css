@@ -484,11 +484,6 @@ header h1 {
 
 .domain-group-header .toggle-icon {
   font-size: 12px;
-  transition: transform 0.2s;
-}
-
-.domain-group-header.collapsed .toggle-icon {
-  transform: rotate(-90deg);
 }
 
 .domain-group-header .note-count {

@@ -906,7 +906,7 @@ class SidePanelApp {
       const domainHeader = document.createElement('div');
       domainHeader.className = `domain-group-header${isCollapsed ? ' collapsed' : ''}`;
       domainHeader.innerHTML = `
-        <span class="toggle-icon">${TOGGLE_ICON_EXPANDED}</span>
+        <span class="toggle-icon">${isCollapsed ? TOGGLE_ICON_COLLAPSED : TOGGLE_ICON_EXPANDED}</span>
         <span class="domain-name">${this.escapeHtml(domain)}</span>
         <span class="note-count">${notes.length} note${notes.length !== 1 ? 's' : ''}</span>
       `;
@@ -914,14 +914,17 @@ class SidePanelApp {
       // Toggle collapse on header click
       domainHeader.addEventListener('click', () => {
         const notesContainer = domainHeader.nextElementSibling;
+        const toggleIcon = domainHeader.querySelector('.toggle-icon');
         if (this.collapsedDomains.has(domain)) {
           this.collapsedDomains.delete(domain);
           domainHeader.classList.remove('collapsed');
           notesContainer.classList.remove('collapsed');
+          toggleIcon.textContent = TOGGLE_ICON_EXPANDED;
         } else {
           this.collapsedDomains.add(domain);
           domainHeader.classList.add('collapsed');
           notesContainer.classList.add('collapsed');
+          toggleIcon.textContent = TOGGLE_ICON_COLLAPSED;
         }
       });
       
