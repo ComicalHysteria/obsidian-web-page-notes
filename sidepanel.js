@@ -5,6 +5,9 @@ const NOTE_HEADER_REGEX = /^(# .*?\n\n\*\*URL:\*\*.*?\n\*\*Date:\*\*.*?\n\n---\n
 const NOTE_METADATA_REGEX = /^# (.+)\n\n\*\*URL:\*\* (.+)\n\*\*Date:\*\* (.+)\n\n---\n\n/s;
 const DEFAULT_TITLE = 'Untitled';
 const PLACEHOLDER_URL = '#';
+const OTHER_DOMAIN_GROUP = 'Other';
+const TOGGLE_ICON_EXPANDED = '▼';
+const TOGGLE_ICON_COLLAPSED = '▶';
 
 class ObsidianAPI {
   constructor() {
@@ -877,10 +880,10 @@ class SidePanelApp {
       } catch (error) {
         console.error('Invalid URL in note:', note.url, error);
         // Group invalid URLs under "Other"
-        if (!this.domainGroups['Other']) {
-          this.domainGroups['Other'] = [];
+        if (!this.domainGroups[OTHER_DOMAIN_GROUP]) {
+          this.domainGroups[OTHER_DOMAIN_GROUP] = [];
         }
-        this.domainGroups['Other'].push(note);
+        this.domainGroups[OTHER_DOMAIN_GROUP].push(note);
       }
     });
   }
@@ -903,7 +906,7 @@ class SidePanelApp {
       const domainHeader = document.createElement('div');
       domainHeader.className = `domain-group-header${isCollapsed ? ' collapsed' : ''}`;
       domainHeader.innerHTML = `
-        <span class="toggle-icon">▼</span>
+        <span class="toggle-icon">${TOGGLE_ICON_EXPANDED}</span>
         <span class="domain-name">${this.escapeHtml(domain)}</span>
         <span class="note-count">${notes.length} note${notes.length !== 1 ? 's' : ''}</span>
       `;
@@ -976,7 +979,8 @@ class SidePanelApp {
   }
 
   async toggleAllNotes() {
-    // Legacy method - redirect to switchView
+    // Legacy method for backward compatibility - redirect to switchView
+    // Note: This only handles 'current' and 'all' views, not 'domain'
     if (this.currentView === 'current') {
       this.switchView('all');
     } else {
