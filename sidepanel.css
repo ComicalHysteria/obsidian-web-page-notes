@@ -36,6 +36,11 @@ header h1 {
   font-weight: 600;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 8px;
+}
+
 .icon-btn {
   background: rgba(255,255,255,0.2);
   border: none;
@@ -198,4 +203,97 @@ header h1 {
 
 #connection-status.warning {
   color: #ffc107;
+}
+
+.all-notes-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px;
+}
+
+.all-notes-header {
+  margin-bottom: 16px;
+}
+
+.all-notes-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+}
+
+.all-notes-header .help-text {
+  font-size: 12px;
+  color: #a0a0a0;
+}
+
+.all-notes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.all-notes-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.all-notes-list::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 3px;
+}
+
+.all-notes-list::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 3px;
+}
+
+.all-notes-list::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+
+.note-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  background-color: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.note-item:hover {
+  background-color: #252525;
+  border-color: #667eea;
+  transform: translateX(4px);
+}
+
+.note-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-item-url {
+  font-size: 12px;
+  color: #a0a0a0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loading, .empty-state, .error-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #a0a0a0;
+  font-size: 14px;
+}
+
+.error-state {
+  color: #f5a5a8;
 }

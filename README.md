@@ -11,6 +11,7 @@ Unofficial Chrome extension for Obsidian that lets you take notes for webpages i
 - 🛡️ Automatic save on exit to prevent data loss when closing the side panel
 - 🔍 Retrieves previously created notes for any webpage
 - ✏️ Edit and update existing notes seamlessly
+- 📚 View all your notes in one place with title and URL listing
 - 🌐 Organized by URL with metadata (title, URL, timestamp)
 
 ## Prerequisites
@@ -64,7 +65,9 @@ _Extension is pending publication_
 4. Write or edit your notes in Markdown format
 5. Your notes will auto-save as you type (if enabled), or click "Save to Obsidian" to save manually
 6. Notes are automatically saved when you close the side panel, preventing data loss
-7. Your notes are saved in your Obsidian vault under the configured folder
+7. Click "📚 All Notes" to view all your saved notes with their titles and URLs
+8. Click on any note in the list to open its webpage in a new tab
+9. Your notes are saved in your Obsidian vault under the configured folder
 
 ### Notes Organization
 
@@ -86,6 +89,7 @@ Example: `github.com-obsidian-plugin.md`
 - **Save on Exit**: Automatically saves notes when closing or hiding the side panel
 - **Save Button**: Manually saves notes to Obsidian
 - **Refresh Button**: Reloads the note from Obsidian
+- **All Notes View**: Toggle button to view all your saved notes with titles and URLs
 - **Connection Status**: Shows real-time connection status to Obsidian
 
 ### Settings Page

@@ -130,6 +130,63 @@ class ObsidianAPI {
       throw error;
     }
   }
+
+  async listAllNotes() {
+    try {
+      const response = await fetch(`${this.baseUrl}/vault/${encodeURIComponent(this.notesPath)}/`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to list notes: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      // The API returns an object with "files" array
+      // Handle both array and object formats for compatibility
+      const files = Array.isArray(data) ? data : (data.files || []);
+      
+      // Filter for markdown files only
+      const noteFiles = files.filter(file => file.endsWith('.md'));
+      
+      // Fetch metadata for each note
+      const notes = [];
+      for (const file of noteFiles) {
+        try {
+          const filePath = `${this.notesPath}/${file}`;
+          const noteResponse = await fetch(`${this.baseUrl}/vault/${encodeURIComponent(filePath)}`, {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`
+            }
+          });
+
+          if (noteResponse.ok) {
+            const content = await noteResponse.text();
+            // Parse the header to extract title and URL
+            const titleMatch = content.match(/^# (.+)$/m);
+            const urlMatch = content.match(/\*\*URL:\*\* (.+)$/m);
+            
+            if (titleMatch && urlMatch) {
+              notes.push({
+                filename: file,
+                title: titleMatch[1],
+                url: urlMatch[1]
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Error reading note ${file}:`, error);
+        }
+      }
+
+      return notes;
+    } catch (error) {
+      console.error('Error listing notes:', error);
+      throw error;
+    }
+  }
 }
 
 class SidePanelApp {
@@ -141,6 +198,7 @@ class SidePanelApp {
     this.autoSaveEnabled = true;
     this.autoSaveDelay = 2000; // milliseconds
     this.autoSaveTimeout = null;
+    this.isShowingAllNotes = false;
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
@@ -151,7 +209,11 @@ class SidePanelApp {
       settingsBtn: document.getElementById('settings-btn'),
       connectionStatus: document.getElementById('connection-status'),
       statusMessage: document.getElementById('status-message'),
-      lastSaved: document.getElementById('last-saved')
+      lastSaved: document.getElementById('last-saved'),
+      allNotesBtn: document.getElementById('all-notes-btn'),
+      editorContainer: document.getElementById('editor-container'),
+      allNotesContainer: document.getElementById('all-notes-container'),
+      allNotesList: document.getElementById('all-notes-list')
     };
 
     this.init();
@@ -182,6 +244,7 @@ class SidePanelApp {
     this.elements.saveBtn.addEventListener('click', () => this.saveNote());
     this.elements.refreshBtn.addEventListener('click', () => this.loadCurrentTab());
     this.elements.settingsBtn.addEventListener('click', () => chrome.runtime.openOptionsPage());
+    this.elements.allNotesBtn.addEventListener('click', () => this.toggleAllNotes());
 
     // Auto-save on input
     this.elements.noteEditor.addEventListener('input', () => {
@@ -405,6 +468,61 @@ class SidePanelApp {
     setTimeout(() => {
       this.elements.statusMessage.className = 'status-message hidden';
     }, 3000);
+  }
+
+  async toggleAllNotes() {
+    this.isShowingAllNotes = !this.isShowingAllNotes;
+    
+    if (this.isShowingAllNotes) {
+      this.elements.editorContainer.style.display = 'none';
+      this.elements.allNotesContainer.style.display = 'flex';
+      this.elements.allNotesBtn.textContent = '📝 Current Page';
+      await this.loadAllNotes();
+    } else {
+      this.elements.editorContainer.style.display = 'flex';
+      this.elements.allNotesContainer.style.display = 'none';
+      this.elements.allNotesBtn.textContent = '📚 All Notes';
+    }
+  }
+
+  async loadAllNotes() {
+    this.elements.allNotesList.innerHTML = '<div class="loading">Loading notes...</div>';
+    
+    try {
+      const notes = await this.api.listAllNotes();
+      
+      if (notes.length === 0) {
+        this.elements.allNotesList.innerHTML = '<div class="empty-state">No notes found. Start taking notes!</div>';
+        return;
+      }
+
+      this.elements.allNotesList.innerHTML = '';
+      
+      notes.forEach(note => {
+        const noteItem = document.createElement('div');
+        noteItem.className = 'note-item';
+        noteItem.innerHTML = `
+          <div class="note-item-title">${this.escapeHtml(note.title)}</div>
+          <div class="note-item-url">${this.escapeHtml(note.url)}</div>
+        `;
+        
+        noteItem.addEventListener('click', () => {
+          // Open the URL in a new tab
+          chrome.tabs.create({ url: note.url });
+        });
+        
+        this.elements.allNotesList.appendChild(noteItem);
+      });
+    } catch (error) {
+      console.error('Error loading all notes:', error);
+      this.elements.allNotesList.innerHTML = '<div class="error-state">Failed to load notes. Check your connection.</div>';
+    }
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 
