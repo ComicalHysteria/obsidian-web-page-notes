@@ -1,0 +1,76 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from manifest
+        id: get_version
+        run: |
+          VERSION=$(jq -r '.version' manifest.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extension version: $VERSION"
+
+      - name: Package extension
+        run: |
+          mkdir -p dist
+          zip -r dist/obsidian-web-page-notes-v${{ steps.get_version.outputs.version }}.zip \
+            manifest.json \
+            background.js \
+            sidepanel.html \
+            sidepanel.js \
+            sidepanel.css \
+            options.html \
+            options.js \
+            options.css \
+            icons/ \
+            README.md \
+            LICENSE
+
+          echo "Package created: obsidian-web-page-notes-v${{ steps.get_version.outputs.version }}.zip"
+          ls -lh dist/
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/obsidian-web-page-notes-v${{ steps.get_version.outputs.version }}.zip
+          body: |
+            ## Obsidian Web Page Notes v${{ steps.get_version.outputs.version }}
+
+            ### Installation
+            1. Download the `obsidian-web-page-notes-v${{ steps.get_version.outputs.version }}.zip` file
+            2. Extract the zip file
+            3. Open Chrome and navigate to `chrome://extensions/`
+            4. Enable "Developer mode" in the top right
+            5. Click "Load unpacked"
+            6. Select the extracted folder
+
+            ### Requirements
+            - Obsidian with Local REST API plugin installed
+            - See the [README](https://github.com/ComicalHysteria/obsidian-web-page-notes#readme) for setup
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidian-web-page-notes-v${{ steps.get_version.outputs.version }}
+          path: dist/obsidian-web-page-notes-v${{ steps.get_version.outputs.version }}.zip
+          retention-days: 90
