@@ -2,6 +2,7 @@
 
 // Constants
 const NOTE_HEADER_REGEX = /^(# .*?\n\n\*\*URL:\*\*.*?\n\*\*Date:\*\*.*?\n\n---\n\n)/s;
+const NOTE_METADATA_REGEX = /^# (.+)\n\n\*\*URL:\*\* (.+)\n\*\*Date:\*\* (.+)\n\n---\n\n/s;
 
 class ObsidianAPI {
   constructor() {
@@ -194,15 +195,19 @@ class SidePanelApp {
     this.api = new ObsidianAPI();
     this.currentUrl = '';
     this.currentTitle = '';
+    this.noteTitle = ''; // Custom note title set by user
     this.isLoading = false;
     this.autoSaveEnabled = true;
     this.autoSaveDelay = 2000; // milliseconds
     this.autoSaveTimeout = null;
     this.isShowingAllNotes = false;
+    this.viewingMode = 'current'; // 'current' or 'saved'
+    this.viewingSavedNoteUrl = ''; // URL of the note being viewed
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
       pageUrl: document.getElementById('page-url'),
+      noteTitleInput: document.getElementById('note-title-input'),
       noteEditor: document.getElementById('note-editor'),
       saveBtn: document.getElementById('save-btn'),
       refreshBtn: document.getElementById('refresh-btn'),
@@ -242,14 +247,31 @@ class SidePanelApp {
 
   attachEventListeners() {
     this.elements.saveBtn.addEventListener('click', () => this.saveNote());
-    this.elements.refreshBtn.addEventListener('click', () => this.loadCurrentTab());
+    this.elements.refreshBtn.addEventListener('click', () => this.refreshNote());
     this.elements.settingsBtn.addEventListener('click', () => chrome.runtime.openOptionsPage());
     this.elements.allNotesBtn.addEventListener('click', () => this.toggleAllNotes());
 
     // Auto-save on input
     this.elements.noteEditor.addEventListener('input', () => {
-      if (this.autoSaveEnabled) {
+      if (this.autoSaveEnabled && this.viewingMode === 'current') {
         this.scheduleAutoSave();
+      }
+    });
+
+    // Auto-save when note title changes
+    this.elements.noteTitleInput.addEventListener('input', () => {
+      this.noteTitle = this.elements.noteTitleInput.value.trim();
+      if (this.autoSaveEnabled && this.viewingMode === 'current') {
+        this.scheduleAutoSave();
+      }
+    });
+
+    // Handle URL click to open page
+    this.elements.pageUrl.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = this.elements.pageUrl.href;
+      if (url && url !== '#') {
+        chrome.tabs.create({ url: url });
       }
     });
 
@@ -260,9 +282,9 @@ class SidePanelApp {
         clearTimeout(this.autoSaveTimeout);
       }
       
-      // Save if there's content and we're not already saving
+      // Save if there's content and we're not already saving and in current mode
       const content = this.elements.noteEditor.value.trim();
-      if (content && this.currentUrl && !this.isLoading) {
+      if (content && this.currentUrl && !this.isLoading && this.viewingMode === 'current') {
         // Trigger save when panel is being closed or hidden
         try {
           this.saveNote(true);
@@ -284,7 +306,8 @@ class SidePanelApp {
 
     // Listen for tab updates from background script
     chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === 'TAB_UPDATED') {
+      if (message.type === 'TAB_UPDATED' && this.viewingMode === 'current') {
+        // Only auto-update if we're in current page mode
         this.loadCurrentTab();
       }
     });
@@ -311,23 +334,38 @@ class SidePanelApp {
           tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://')) {
         this.elements.pageTitle.textContent = 'Cannot take notes for this page';
         this.elements.pageUrl.textContent = '';
+        this.elements.pageUrl.href = '#';
         this.elements.noteEditor.disabled = true;
         this.elements.saveBtn.disabled = true;
+        this.elements.noteTitleInput.disabled = true;
         return;
       }
 
       this.currentUrl = tab.url;
       this.currentTitle = tab.title || 'Untitled';
+      this.viewingMode = 'current';
+      this.viewingSavedNoteUrl = '';
       
       this.elements.pageTitle.textContent = this.currentTitle;
       this.elements.pageUrl.textContent = this.currentUrl;
+      this.elements.pageUrl.href = this.currentUrl;
       this.elements.noteEditor.disabled = false;
       this.elements.saveBtn.disabled = false;
+      this.elements.noteTitleInput.disabled = false;
 
       await this.loadNote();
     } catch (error) {
       console.error('Error loading current tab:', error);
       this.showError('Failed to load current tab');
+    }
+  }
+
+  async refreshNote() {
+    if (this.viewingMode === 'current') {
+      await this.loadCurrentTab();
+    } else if (this.viewingMode === 'saved') {
+      // Reload the saved note
+      await this.loadSavedNote(this.viewingSavedNoteUrl);
     }
   }
 
@@ -340,18 +378,84 @@ class SidePanelApp {
       const note = await this.api.getNote(this.currentUrl);
       
       if (note) {
-        // Extract the content after the header
-        const contentMatch = note.match(NOTE_HEADER_REGEX);
-        const content = contentMatch ? note.substring(contentMatch[0].length) : note;
-        this.elements.noteEditor.value = content;
+        // Extract the metadata and content
+        const metadataMatch = note.match(NOTE_METADATA_REGEX);
+        if (metadataMatch) {
+          const noteTitle = metadataMatch[1];
+          const content = note.substring(metadataMatch[0].length);
+          
+          // Set the note title
+          this.noteTitle = noteTitle;
+          this.elements.noteTitleInput.value = noteTitle;
+          this.elements.noteEditor.value = content;
+        } else {
+          // Fallback for notes without proper metadata
+          const contentMatch = note.match(NOTE_HEADER_REGEX);
+          const content = contentMatch ? note.substring(contentMatch[0].length) : note;
+          this.elements.noteEditor.value = content;
+          this.noteTitle = this.currentTitle;
+          this.elements.noteTitleInput.value = this.currentTitle;
+        }
         this.elements.lastSaved.textContent = '✓ Loaded from Obsidian';
       } else {
         this.elements.noteEditor.value = '';
+        this.noteTitle = this.currentTitle;
+        this.elements.noteTitleInput.value = this.currentTitle;
         this.elements.lastSaved.textContent = 'No existing note';
       }
     } catch (error) {
       console.error('Error loading note:', error);
       this.showError('Failed to load note from Obsidian');
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async loadSavedNote(url) {
+    if (!url) return;
+
+    this.setLoading(true);
+    this.viewingMode = 'saved';
+    this.viewingSavedNoteUrl = url;
+    
+    try {
+      const note = await this.api.getNote(url);
+      
+      if (note) {
+        // Extract the metadata and content
+        const metadataMatch = note.match(NOTE_METADATA_REGEX);
+        if (metadataMatch) {
+          const noteTitle = metadataMatch[1];
+          const noteUrl = metadataMatch[2];
+          const content = note.substring(metadataMatch[0].length);
+          
+          // Set the note title and URL
+          this.noteTitle = noteTitle;
+          this.elements.noteTitleInput.value = noteTitle;
+          this.elements.pageTitle.textContent = 'Page: ' + noteTitle;
+          this.elements.pageUrl.textContent = noteUrl;
+          this.elements.pageUrl.href = noteUrl;
+          this.elements.noteEditor.value = content;
+          
+          // Store URL for saving
+          this.currentUrl = noteUrl;
+        } else {
+          // Fallback for notes without proper metadata
+          const contentMatch = note.match(NOTE_HEADER_REGEX);
+          const content = contentMatch ? note.substring(contentMatch[0].length) : note;
+          this.elements.noteEditor.value = content;
+          this.currentUrl = url;
+        }
+        this.elements.noteEditor.disabled = false;
+        this.elements.saveBtn.disabled = false;
+        this.elements.noteTitleInput.disabled = false;
+        this.elements.lastSaved.textContent = '✓ Viewing saved note';
+      } else {
+        this.showError('Failed to load saved note');
+      }
+    } catch (error) {
+      console.error('Error loading saved note:', error);
+      this.showError('Failed to load saved note from Obsidian');
     } finally {
       this.setLoading(false);
     }
@@ -384,6 +488,9 @@ class SidePanelApp {
       return;
     }
 
+    // Get the note title - use custom title if set, otherwise use page title
+    const titleToSave = this.noteTitle || this.currentTitle || 'Untitled';
+
     // Only show loading state for manual saves
     if (!isAutoSave) {
       this.setLoading(true);
@@ -393,7 +500,7 @@ class SidePanelApp {
     }
     
     try {
-      await this.api.saveNote(this.currentUrl, this.currentTitle, content);
+      await this.api.saveNote(this.currentUrl, titleToSave, content);
       if (!isAutoSave) {
         this.showSuccess('Note saved to Obsidian!');
       }
@@ -506,9 +613,15 @@ class SidePanelApp {
           <div class="note-item-url">${this.escapeHtml(note.url)}</div>
         `;
         
-        noteItem.addEventListener('click', () => {
-          // Open the URL in a new tab
-          chrome.tabs.create({ url: note.url });
+        noteItem.addEventListener('click', async () => {
+          // Switch back to editor view and load the note
+          this.isShowingAllNotes = false;
+          this.elements.editorContainer.style.display = 'flex';
+          this.elements.allNotesContainer.style.display = 'none';
+          this.elements.allNotesBtn.textContent = '📚 All Notes';
+          
+          // Load the saved note
+          await this.loadSavedNote(note.url);
         });
         
         this.elements.allNotesList.appendChild(noteItem);

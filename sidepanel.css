@@ -91,10 +91,50 @@ header h1 {
   background-color: #252525;
 }
 
-.page-title {
-  font-size: 15px;
-  font-weight: 600;
+.note-title-container {
+  margin-bottom: 12px;
+}
+
+.note-title-label {
+  display: block;
+  font-size: 11px;
+  color: #a0a0a0;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.note-title-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background-color: #1a1a1a;
   color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.note-title-input:focus {
+  border-color: #667eea;
+}
+
+.note-title-input::placeholder {
+  color: #606060;
+  font-weight: normal;
+}
+
+.page-title-container {
+  padding-top: 8px;
+  border-top: 1px solid #404040;
+}
+
+.page-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #b0b0b0;
   margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -102,11 +142,20 @@ header h1 {
 }
 
 .page-url {
+  display: inline-block;
   font-size: 12px;
-  color: #a0a0a0;
+  color: #667eea;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.page-url:hover {
+  color: #8094f7;
+  text-decoration: underline;
 }
 
 .editor-container {
