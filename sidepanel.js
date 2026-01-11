@@ -193,8 +193,8 @@ class ObsidianAPI {
 class SidePanelApp {
   constructor() {
     this.api = new ObsidianAPI();
-    this.currentUrl = '';
-    this.currentTitle = '';
+    this.currentUrl = ''; // URL for saving the note
+    this.currentPageTitle = ''; // Original page title
     this.noteTitle = ''; // Custom note title set by user
     this.isLoading = false;
     this.autoSaveEnabled = true;
@@ -202,7 +202,6 @@ class SidePanelApp {
     this.autoSaveTimeout = null;
     this.isShowingAllNotes = false;
     this.viewingMode = 'current'; // 'current' or 'saved'
-    this.viewingSavedNoteUrl = ''; // URL of the note being viewed
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
@@ -342,11 +341,10 @@ class SidePanelApp {
       }
 
       this.currentUrl = tab.url;
-      this.currentTitle = tab.title || 'Untitled';
+      this.currentPageTitle = tab.title || 'Untitled';
       this.viewingMode = 'current';
-      this.viewingSavedNoteUrl = '';
       
-      this.elements.pageTitle.textContent = this.currentTitle;
+      this.elements.pageTitle.textContent = this.currentPageTitle;
       this.elements.pageUrl.textContent = this.currentUrl;
       this.elements.pageUrl.href = this.currentUrl;
       this.elements.noteEditor.disabled = false;
@@ -364,8 +362,8 @@ class SidePanelApp {
     if (this.viewingMode === 'current') {
       await this.loadCurrentTab();
     } else if (this.viewingMode === 'saved') {
-      // Reload the saved note
-      await this.loadSavedNote(this.viewingSavedNoteUrl);
+      // Reload the saved note using current URL
+      await this.loadSavedNote(this.currentUrl);
     }
   }
 
@@ -393,14 +391,14 @@ class SidePanelApp {
           const contentMatch = note.match(NOTE_HEADER_REGEX);
           const content = contentMatch ? note.substring(contentMatch[0].length) : note;
           this.elements.noteEditor.value = content;
-          this.noteTitle = this.currentTitle;
-          this.elements.noteTitleInput.value = this.currentTitle;
+          this.noteTitle = this.currentPageTitle;
+          this.elements.noteTitleInput.value = this.currentPageTitle;
         }
         this.elements.lastSaved.textContent = '✓ Loaded from Obsidian';
       } else {
         this.elements.noteEditor.value = '';
-        this.noteTitle = this.currentTitle;
-        this.elements.noteTitleInput.value = this.currentTitle;
+        this.noteTitle = this.currentPageTitle;
+        this.elements.noteTitleInput.value = this.currentPageTitle;
         this.elements.lastSaved.textContent = 'No existing note';
       }
     } catch (error) {
@@ -416,7 +414,6 @@ class SidePanelApp {
 
     this.setLoading(true);
     this.viewingMode = 'saved';
-    this.viewingSavedNoteUrl = url;
     
     try {
       const note = await this.api.getNote(url);
@@ -431,20 +428,21 @@ class SidePanelApp {
           
           // Set the note title and URL
           this.noteTitle = noteTitle;
+          this.currentUrl = noteUrl; // Set the URL for saving
+          this.currentPageTitle = noteTitle; // Use note title as page title fallback
+          
           this.elements.noteTitleInput.value = noteTitle;
           this.elements.pageTitle.textContent = 'Page: ' + noteTitle;
           this.elements.pageUrl.textContent = noteUrl;
           this.elements.pageUrl.href = noteUrl;
           this.elements.noteEditor.value = content;
-          
-          // Store URL for saving
-          this.currentUrl = noteUrl;
         } else {
           // Fallback for notes without proper metadata
           const contentMatch = note.match(NOTE_HEADER_REGEX);
           const content = contentMatch ? note.substring(contentMatch[0].length) : note;
           this.elements.noteEditor.value = content;
           this.currentUrl = url;
+          this.currentPageTitle = 'Untitled';
         }
         this.elements.noteEditor.disabled = false;
         this.elements.saveBtn.disabled = false;
@@ -489,7 +487,7 @@ class SidePanelApp {
     }
 
     // Get the note title - use custom title if set, otherwise use page title
-    const titleToSave = this.noteTitle || this.currentTitle || 'Untitled';
+    const titleToSave = this.noteTitle || this.currentPageTitle || 'Untitled';
 
     // Only show loading state for manual saves
     if (!isAutoSave) {
