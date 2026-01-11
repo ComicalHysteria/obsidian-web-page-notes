@@ -5,6 +5,9 @@ Unofficial Chrome extension for Obsidian that lets you take notes for webpages i
 ## Features
 
 - 📝 Take notes about any webpage directly in a Chrome side panel
+- 🏷️ Custom note titles that are independent of page titles
+- 👀 View and edit notes without opening the webpage they were created for
+- 🔗 Clickable URLs to easily navigate to associated webpages
 - 🔄 Automatically syncs with Obsidian via the Local REST API plugin
 - 💾 Saves notes as Markdown files in your Obsidian vault
 - ⚡ Auto-save functionality that saves as you type (configurable)
@@ -62,19 +65,21 @@ _Extension is pending publication_
 1. Navigate to any webpage you want to take notes about
 2. Click the extension icon or press the extension keyboard shortcut
 3. The side panel will open showing any existing notes for that page
-4. Write or edit your notes in Markdown format
-5. Your notes will auto-save as you type (if enabled), or click "Save to Obsidian" to save manually
-6. Notes are automatically saved when you close the side panel, preventing data loss
-7. Click "📚 All Notes" to view all your saved notes with their titles and URLs
-8. Click on any note in the list to open its webpage in a new tab
-9. Your notes are saved in your Obsidian vault under the configured folder
+4. Set a custom title for your note (or use the default page title)
+5. Write or edit your notes in Markdown format
+6. Your notes will auto-save as you type (if enabled), or click "Save to Obsidian" to save manually
+7. Notes are automatically saved when you close the side panel, preventing data loss
+8. Click "📚 All Notes" to view all your saved notes with their titles and URLs
+9. Click on any note in the list to view and edit it directly
+10. Click the URL link to open the associated webpage in a new tab
+11. Your notes are saved in your Obsidian vault under the configured folder
 
 ### Notes Organization
 
 Notes are automatically organized by URL:
 - Filename format: `domain-path.md`
 - Each note includes:
-  - Page title as heading
+  - Custom note title (editable at any time)
   - URL and timestamp metadata
   - Your note content in Markdown
 
@@ -83,13 +88,17 @@ Example: `github.com-obsidian-plugin.md`
 ## Features in Detail
 
 ### Side Panel Interface
-- **Current Page Info**: Shows the title and URL of the current page
+- **Note Title Field**: Editable title for each note, independent of page title
+- **Current Page Info**: Shows the title and clickable URL of the current page
 - **Note Editor**: Markdown-enabled text area for writing notes
-- **Auto-Save**: Automatically saves notes as you type (with configurable delay)
-- **Save on Exit**: Automatically saves notes when closing or hiding the side panel
+- **Auto-Save**: Automatically saves notes as you type (with configurable delay, only in current page mode)
+- **Save on Exit**: Automatically saves notes when closing or hiding the side panel (only in current page mode)
 - **Save Button**: Manually saves notes to Obsidian
 - **Refresh Button**: Reloads the note from Obsidian
-- **All Notes View**: Toggle button to view all your saved notes with titles and URLs
+- **All Notes View**: Click to view all your saved notes; click any note to view and edit it
+- **Viewing Modes**: 
+  - **Current Mode**: Viewing notes for the active browser tab (auto-updates on tab change)
+  - **Saved Mode**: Viewing a saved note from All Notes (no auto-updates, manual save required)
 - **Connection Status**: Shows real-time connection status to Obsidian
 
 ### Settings Page
