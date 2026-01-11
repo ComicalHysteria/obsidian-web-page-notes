@@ -213,7 +213,8 @@ class SidePanelApp {
     this.viewingMode = 'current'; // 'current' or 'saved'
     this.titleUpdateTimeout = null; // For reverting visual feedback
     this.allNotes = []; // Store all notes for filtering
-    this.searchDebounceTimeout = null; // For debouncing search input
+    this.allNotesSearchTimeout = null; // For debouncing all notes search input
+    this.domainNotesSearchTimeout = null; // For debouncing domain notes search input
     this.domainGroups = {}; // Store notes grouped by domain
     this.collapsedDomains = new Set(); // Track collapsed domain groups
     
@@ -384,10 +385,10 @@ class SidePanelApp {
     // Handle search input for filtering notes in All Notes view
     this.elements.notesSearchInput.addEventListener('input', () => {
       // Debounce the search to avoid excessive filtering
-      if (this.searchDebounceTimeout) {
-        clearTimeout(this.searchDebounceTimeout);
+      if (this.allNotesSearchTimeout) {
+        clearTimeout(this.allNotesSearchTimeout);
       }
-      this.searchDebounceTimeout = setTimeout(() => {
+      this.allNotesSearchTimeout = setTimeout(() => {
         this.filterNotes();
       }, 150); // 150ms debounce delay
     });
@@ -395,10 +396,10 @@ class SidePanelApp {
     // Handle search input for filtering notes in Domain Notes view
     this.elements.domainNotesSearchInput.addEventListener('input', () => {
       // Debounce the search to avoid excessive filtering
-      if (this.searchDebounceTimeout) {
-        clearTimeout(this.searchDebounceTimeout);
+      if (this.domainNotesSearchTimeout) {
+        clearTimeout(this.domainNotesSearchTimeout);
       }
-      this.searchDebounceTimeout = setTimeout(() => {
+      this.domainNotesSearchTimeout = setTimeout(() => {
         this.filterDomainNotes();
       }, 150); // 150ms debounce delay
     });
@@ -964,41 +965,7 @@ class SidePanelApp {
       return;
     }
 
-    // Filter and score notes based on matches
-    const scoredNotes = this.allNotes.map(note => {
-      let score = 0;
-      const titleLower = note.title.toLowerCase();
-      const urlLower = note.url.toLowerCase();
-      // Limit content search to first 1000 characters for performance
-      const contentLower = note.content.substring(0, 1000).toLowerCase();
-
-      // Title matches (highest priority - score 3)
-      if (titleLower.includes(query)) {
-        score += 3;
-        // Bonus if it's at the start of title
-        if (titleLower.startsWith(query)) {
-          score += 2;
-        }
-      }
-
-      // URL matches (medium priority - score 2)
-      if (urlLower.includes(query)) {
-        score += 2;
-      }
-
-      // Content matches (lowest priority - score 1)
-      if (contentLower.includes(query)) {
-        score += 1;
-      }
-
-      return { note, score };
-    });
-
-    // Filter notes with score > 0 and sort by score (descending)
-    const filteredNotes = scoredNotes
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map(item => item.note);
+    const filteredNotes = this.searchAndScoreNotes(query, this.allNotes);
 
     if (filteredNotes.length === 0) {
       this.elements.domainNotesList.innerHTML = '<div class="empty-state">No notes match your search.</div>';
@@ -1026,8 +993,18 @@ class SidePanelApp {
       return;
     }
 
+    const filteredNotes = this.searchAndScoreNotes(query, this.allNotes);
+
+    if (filteredNotes.length === 0) {
+      this.elements.allNotesList.innerHTML = '<div class="empty-state">No notes match your search.</div>';
+    } else {
+      this.renderNotes(filteredNotes);
+    }
+  }
+
+  searchAndScoreNotes(query, notes) {
     // Filter and score notes based on matches
-    const scoredNotes = this.allNotes.map(note => {
+    const scoredNotes = notes.map(note => {
       let score = 0;
       const titleLower = note.title.toLowerCase();
       const urlLower = note.url.toLowerCase();
@@ -1057,16 +1034,10 @@ class SidePanelApp {
     });
 
     // Filter notes with score > 0 and sort by score (descending)
-    const filteredNotes = scoredNotes
+    return scoredNotes
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score)
       .map(item => item.note);
-
-    if (filteredNotes.length === 0) {
-      this.elements.allNotesList.innerHTML = '<div class="empty-state">No notes match your search.</div>';
-    } else {
-      this.renderNotes(filteredNotes);
-    }
   }
 
   renderNotes(notes) {
