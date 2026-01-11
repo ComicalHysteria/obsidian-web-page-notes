@@ -5,6 +5,9 @@ const NOTE_HEADER_REGEX = /^(# .*?\n\n\*\*URL:\*\*.*?\n\*\*Date:\*\*.*?\n\n---\n
 const NOTE_METADATA_REGEX = /^# (.+)\n\n\*\*URL:\*\* (.+)\n\*\*Date:\*\* (.+)\n\n---\n\n/s;
 const DEFAULT_TITLE = 'Untitled';
 const PLACEHOLDER_URL = '#';
+const OTHER_DOMAIN_GROUP = 'Other';
+const TOGGLE_ICON_EXPANDED = '▼';
+const TOGGLE_ICON_COLLAPSED = '▶';
 
 class ObsidianAPI {
   constructor() {
@@ -209,11 +212,14 @@ class SidePanelApp {
     this.autoSaveEnabled = true;
     this.autoSaveDelay = 2000; // milliseconds
     this.autoSaveTimeout = null;
-    this.isShowingAllNotes = false;
+    this.currentView = 'current'; // 'current', 'all', or 'domain'
     this.viewingMode = 'current'; // 'current' or 'saved'
     this.titleUpdateTimeout = null; // For reverting visual feedback
     this.allNotes = []; // Store all notes for filtering
-    this.searchDebounceTimeout = null; // For debouncing search input
+    this.allNotesSearchTimeout = null; // For debouncing all notes search input
+    this.domainNotesSearchTimeout = null; // For debouncing domain notes search input
+    this.domainGroups = {}; // Store notes grouped by domain
+    this.collapsedDomains = new Set(); // Track collapsed domain groups
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
@@ -227,11 +233,16 @@ class SidePanelApp {
       connectionStatus: document.getElementById('connection-status'),
       statusMessage: document.getElementById('status-message'),
       lastSaved: document.getElementById('last-saved'),
-      allNotesBtn: document.getElementById('all-notes-btn'),
+      viewSelectorBtn: document.getElementById('view-selector-btn'),
+      viewSelectorText: document.getElementById('view-selector-text'),
+      viewDropdownMenu: document.getElementById('view-dropdown-menu'),
       editorContainer: document.getElementById('editor-container'),
       allNotesContainer: document.getElementById('all-notes-container'),
       allNotesList: document.getElementById('all-notes-list'),
-      notesSearchInput: document.getElementById('notes-search-input')
+      notesSearchInput: document.getElementById('notes-search-input'),
+      domainNotesContainer: document.getElementById('domain-notes-container'),
+      domainNotesList: document.getElementById('domain-notes-list'),
+      domainNotesSearchInput: document.getElementById('domain-notes-search-input')
     };
 
     this.init();
@@ -262,7 +273,30 @@ class SidePanelApp {
     this.elements.saveBtn.addEventListener('click', () => this.saveNote());
     this.elements.refreshBtn.addEventListener('click', () => this.refreshNote());
     this.elements.settingsBtn.addEventListener('click', () => chrome.runtime.openOptionsPage());
-    this.elements.allNotesBtn.addEventListener('click', () => this.toggleAllNotes());
+    
+    // View selector dropdown
+    this.elements.viewSelectorBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleViewDropdown();
+    });
+
+    // Dropdown menu items
+    const dropdownItems = this.elements.viewDropdownMenu.querySelectorAll('.dropdown-item');
+    dropdownItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const view = item.getAttribute('data-view');
+        this.switchView(view);
+        this.hideViewDropdown();
+      });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!this.elements.viewDropdownMenu.classList.contains('hidden')) {
+        this.hideViewDropdown();
+      }
+    });
 
     // Auto-save on input
     this.elements.noteEditor.addEventListener('input', () => {
@@ -351,14 +385,25 @@ class SidePanelApp {
       }
     });
 
-    // Handle search input for filtering notes
+    // Handle search input for filtering notes in All Notes view
     this.elements.notesSearchInput.addEventListener('input', () => {
       // Debounce the search to avoid excessive filtering
-      if (this.searchDebounceTimeout) {
-        clearTimeout(this.searchDebounceTimeout);
+      if (this.allNotesSearchTimeout) {
+        clearTimeout(this.allNotesSearchTimeout);
       }
-      this.searchDebounceTimeout = setTimeout(() => {
+      this.allNotesSearchTimeout = setTimeout(() => {
         this.filterNotes();
+      }, 150); // 150ms debounce delay
+    });
+
+    // Handle search input for filtering notes in Domain Notes view
+    this.elements.domainNotesSearchInput.addEventListener('input', () => {
+      // Debounce the search to avoid excessive filtering
+      if (this.domainNotesSearchTimeout) {
+        clearTimeout(this.domainNotesSearchTimeout);
+      }
+      this.domainNotesSearchTimeout = setTimeout(() => {
+        this.filterDomainNotes();
       }, 150); // 150ms debounce delay
     });
   }
@@ -715,18 +760,63 @@ class SidePanelApp {
     }, 3000);
   }
 
-  async toggleAllNotes() {
-    this.isShowingAllNotes = !this.isShowingAllNotes;
-    
-    if (this.isShowingAllNotes) {
-      this.elements.editorContainer.style.display = 'none';
-      this.elements.allNotesContainer.style.display = 'flex';
-      this.elements.allNotesBtn.textContent = '📝 Current Page';
-      await this.loadAllNotes();
+  toggleViewDropdown() {
+    const isHidden = this.elements.viewDropdownMenu.classList.contains('hidden');
+    if (isHidden) {
+      this.elements.viewDropdownMenu.classList.remove('hidden');
+      this.elements.viewSelectorBtn.classList.add('open');
+      this.updateDropdownActiveState();
     } else {
-      this.elements.editorContainer.style.display = 'flex';
-      this.elements.allNotesContainer.style.display = 'none';
-      this.elements.allNotesBtn.textContent = '📚 All Notes';
+      this.hideViewDropdown();
+    }
+  }
+
+  hideViewDropdown() {
+    this.elements.viewDropdownMenu.classList.add('hidden');
+    this.elements.viewSelectorBtn.classList.remove('open');
+  }
+
+  updateDropdownActiveState() {
+    const dropdownItems = this.elements.viewDropdownMenu.querySelectorAll('.dropdown-item');
+    dropdownItems.forEach(item => {
+      const view = item.getAttribute('data-view');
+      if (view === this.currentView) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+
+  switchView(view) {
+    this.currentView = view;
+    
+    // Update button text
+    const viewLabels = {
+      'current': '📝 Current Note',
+      'all': '📚 All Notes',
+      'domain': '🌐 Domain Notes'
+    };
+    this.elements.viewSelectorText.textContent = viewLabels[view];
+
+    // Hide all containers
+    this.elements.editorContainer.style.display = 'none';
+    this.elements.allNotesContainer.style.display = 'none';
+    this.elements.domainNotesContainer.style.display = 'none';
+
+    // Show the selected view
+    switch (view) {
+      case 'current':
+        this.elements.editorContainer.style.display = 'flex';
+        break;
+      case 'all':
+        this.elements.allNotesContainer.style.display = 'flex';
+        this.loadAllNotes();
+        break;
+      case 'domain':
+        this.elements.domainNotesContainer.style.display = 'flex';
+        this.loadDomainNotes();
+        break;
     }
   }
 
@@ -751,6 +841,156 @@ class SidePanelApp {
     }
   }
 
+  async loadDomainNotes() {
+    this.elements.domainNotesList.innerHTML = '<div class="loading">Loading notes...</div>';
+    
+    try {
+      const notes = await this.api.listAllNotes();
+      this.allNotes = notes;
+      
+      if (this.allNotes.length === 0) {
+        this.elements.domainNotesList.innerHTML = '<div class="empty-state">No notes found. Start taking notes!</div>';
+        return;
+      }
+
+      // Clear search input when loading
+      this.elements.domainNotesSearchInput.value = '';
+      
+      // Group notes by domain
+      this.groupNotesByDomain(this.allNotes);
+      this.renderDomainNotes();
+    } catch (error) {
+      console.error('Error loading domain notes:', error);
+      this.elements.domainNotesList.innerHTML = '<div class="error-state">Failed to load notes. Check your connection.</div>';
+    }
+  }
+
+  groupNotesByDomain(notes) {
+    this.domainGroups = {};
+    
+    notes.forEach(note => {
+      try {
+        const url = new URL(note.url);
+        const domain = url.hostname.replace(/^www\./, '');
+        
+        if (!this.domainGroups[domain]) {
+          this.domainGroups[domain] = [];
+        }
+        this.domainGroups[domain].push(note);
+      } catch (error) {
+        console.error('Invalid URL in note:', note.url, error);
+        // Group invalid URLs under "Other"
+        if (!this.domainGroups[OTHER_DOMAIN_GROUP]) {
+          this.domainGroups[OTHER_DOMAIN_GROUP] = [];
+        }
+        this.domainGroups[OTHER_DOMAIN_GROUP].push(note);
+      }
+    });
+  }
+
+  renderDomainNotes() {
+    this.elements.domainNotesList.innerHTML = '';
+    
+    // Sort domains alphabetically
+    const sortedDomains = Object.keys(this.domainGroups).sort();
+    
+    sortedDomains.forEach(domain => {
+      const notes = this.domainGroups[domain];
+      const isCollapsed = this.collapsedDomains.has(domain);
+      
+      // Create domain group container
+      const domainGroup = document.createElement('div');
+      domainGroup.className = 'domain-group';
+      
+      // Create domain header
+      const domainHeader = document.createElement('div');
+      domainHeader.className = `domain-group-header${isCollapsed ? ' collapsed' : ''}`;
+      domainHeader.innerHTML = `
+        <span class="toggle-icon">${isCollapsed ? TOGGLE_ICON_COLLAPSED : TOGGLE_ICON_EXPANDED}</span>
+        <span class="domain-name">${this.escapeHtml(domain)}</span>
+        <span class="note-count">${notes.length} note${notes.length !== 1 ? 's' : ''}</span>
+      `;
+      
+      // Toggle collapse on header click
+      domainHeader.addEventListener('click', () => {
+        const notesContainer = domainHeader.nextElementSibling;
+        const toggleIcon = domainHeader.querySelector('.toggle-icon');
+        if (this.collapsedDomains.has(domain)) {
+          this.collapsedDomains.delete(domain);
+          domainHeader.classList.remove('collapsed');
+          notesContainer.classList.remove('collapsed');
+          toggleIcon.textContent = TOGGLE_ICON_EXPANDED;
+        } else {
+          this.collapsedDomains.add(domain);
+          domainHeader.classList.add('collapsed');
+          notesContainer.classList.add('collapsed');
+          toggleIcon.textContent = TOGGLE_ICON_COLLAPSED;
+        }
+      });
+      
+      // Create notes container
+      const notesContainer = document.createElement('div');
+      notesContainer.className = `domain-group-notes${isCollapsed ? ' collapsed' : ''}`;
+      
+      // Add notes to the container
+      notes.forEach(note => {
+        const noteItem = document.createElement('div');
+        noteItem.className = 'note-item';
+        noteItem.innerHTML = `
+          <div class="note-item-title">${this.escapeHtml(note.title)}</div>
+          <div class="note-item-url">${this.escapeHtml(note.url)}</div>
+        `;
+        
+        noteItem.addEventListener('click', async () => {
+          // Switch back to editor view and load the note
+          this.currentView = 'current';
+          this.elements.viewSelectorText.textContent = '📝 Current Note';
+          this.elements.editorContainer.style.display = 'flex';
+          this.elements.domainNotesContainer.style.display = 'none';
+          
+          // Load the saved note
+          await this.loadSavedNote(note.url);
+        });
+        
+        notesContainer.appendChild(noteItem);
+      });
+      
+      domainGroup.appendChild(domainHeader);
+      domainGroup.appendChild(notesContainer);
+      this.elements.domainNotesList.appendChild(domainGroup);
+    });
+  }
+
+  filterDomainNotes() {
+    const query = this.elements.domainNotesSearchInput.value.trim().toLowerCase();
+    
+    if (!query) {
+      // Show all notes if search is empty
+      this.groupNotesByDomain(this.allNotes);
+      this.renderDomainNotes();
+      return;
+    }
+
+    const filteredNotes = this.searchAndScoreNotes(query, this.allNotes);
+
+    if (filteredNotes.length === 0) {
+      this.elements.domainNotesList.innerHTML = '<div class="empty-state">No notes match your search.</div>';
+    } else {
+      this.groupNotesByDomain(filteredNotes);
+      this.renderDomainNotes();
+    }
+  }
+
+  async toggleAllNotes() {
+    // Legacy method for backward compatibility - redirect to switchView
+    // Note: This only handles 'current' and 'all' views, not 'domain'
+    if (this.currentView === 'current') {
+      this.switchView('all');
+    } else {
+      this.switchView('current');
+    }
+  }
+
   filterNotes() {
     const query = this.elements.notesSearchInput.value.trim().toLowerCase();
     
@@ -760,8 +1000,18 @@ class SidePanelApp {
       return;
     }
 
+    const filteredNotes = this.searchAndScoreNotes(query, this.allNotes);
+
+    if (filteredNotes.length === 0) {
+      this.elements.allNotesList.innerHTML = '<div class="empty-state">No notes match your search.</div>';
+    } else {
+      this.renderNotes(filteredNotes);
+    }
+  }
+
+  searchAndScoreNotes(query, notes) {
     // Filter and score notes based on matches
-    const scoredNotes = this.allNotes.map(note => {
+    const scoredNotes = notes.map(note => {
       let score = 0;
       const titleLower = note.title.toLowerCase();
       const urlLower = note.url.toLowerCase();
@@ -791,16 +1041,10 @@ class SidePanelApp {
     });
 
     // Filter notes with score > 0 and sort by score (descending)
-    const filteredNotes = scoredNotes
+    return scoredNotes
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score)
       .map(item => item.note);
-
-    if (filteredNotes.length === 0) {
-      this.elements.allNotesList.innerHTML = '<div class="empty-state">No notes match your search.</div>';
-    } else {
-      this.renderNotes(filteredNotes);
-    }
   }
 
   renderNotes(notes) {
@@ -816,10 +1060,10 @@ class SidePanelApp {
       
       noteItem.addEventListener('click', async () => {
         // Switch back to editor view and load the note
-        this.isShowingAllNotes = false;
+        this.currentView = 'current';
+        this.elements.viewSelectorText.textContent = '📝 Current Note';
         this.elements.editorContainer.style.display = 'flex';
         this.elements.allNotesContainer.style.display = 'none';
-        this.elements.allNotesBtn.textContent = '📚 All Notes';
         
         // Load the saved note
         await this.loadSavedNote(note.url);
