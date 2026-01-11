@@ -429,10 +429,10 @@ class SidePanelApp {
           // Set the note title and URL
           this.noteTitle = noteTitle;
           this.currentUrl = noteUrl; // Set the URL for saving
-          this.currentPageTitle = noteTitle; // Use note title as page title fallback
+          this.currentPageTitle = noteTitle; // Store as fallback
           
           this.elements.noteTitleInput.value = noteTitle;
-          this.elements.pageTitle.textContent = 'Page: ' + noteTitle;
+          this.elements.pageTitle.textContent = noteTitle;
           this.elements.pageUrl.textContent = noteUrl;
           this.elements.pageUrl.href = noteUrl;
           this.elements.noteEditor.value = content;
@@ -440,9 +440,16 @@ class SidePanelApp {
           // Fallback for notes without proper metadata
           const contentMatch = note.match(NOTE_HEADER_REGEX);
           const content = contentMatch ? note.substring(contentMatch[0].length) : note;
-          this.elements.noteEditor.value = content;
+          
           this.currentUrl = url;
           this.currentPageTitle = 'Untitled';
+          this.noteTitle = 'Untitled';
+          
+          this.elements.noteEditor.value = content;
+          this.elements.noteTitleInput.value = 'Untitled';
+          this.elements.pageTitle.textContent = 'Untitled';
+          this.elements.pageUrl.textContent = url;
+          this.elements.pageUrl.href = url;
         }
         this.elements.noteEditor.disabled = false;
         this.elements.saveBtn.disabled = false;
