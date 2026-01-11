@@ -11,7 +11,17 @@
     <header>
       <h1>📝 Web Page Notes</h1>
       <div class="header-buttons">
-        <button id="all-notes-btn" class="icon-btn" title="View All Notes">📚 All Notes</button>
+        <div class="view-selector-wrapper">
+          <button id="view-selector-btn" class="icon-btn view-selector-btn" title="Select View">
+            <span id="view-selector-text">📝 Current Note</span>
+            <span class="dropdown-arrow">▼</span>
+          </button>
+          <div id="view-dropdown-menu" class="view-dropdown-menu hidden">
+            <div class="dropdown-item" data-view="current">📝 Current Note</div>
+            <div class="dropdown-item" data-view="all">📚 All Notes</div>
+            <div class="dropdown-item" data-view="domain">🌐 Domain Notes</div>
+          </div>
+        </div>
         <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
       </div>
     </header>
@@ -59,6 +69,17 @@
         <input type="text" id="notes-search-input" class="notes-search-input" placeholder="Search notes by title, URL, or content...">
       </div>
       <div id="all-notes-list" class="all-notes-list"></div>
+    </div>
+
+    <div id="domain-notes-container" class="all-notes-container" style="display: none;">
+      <div class="all-notes-header">
+        <h2>Domain Notes</h2>
+        <p class="help-text">Notes grouped by domain - click on any note to view and edit it</p>
+      </div>
+      <div class="search-container">
+        <input type="text" id="domain-notes-search-input" class="notes-search-input" placeholder="Search notes by title, URL, or content...">
+      </div>
+      <div id="domain-notes-list" class="all-notes-list"></div>
     </div>
     
     <div class="connection-status">
