@@ -430,7 +430,9 @@ class SidePanelApp {
           
           // Set the note title and URL
           this.noteTitle = noteTitle;
-          this.currentUrl = noteUrl; // Set the URL for saving
+          // Use the URL from note metadata for saving (not the lookup URL)
+          // This preserves the original URL even if the note was found via different path
+          this.currentUrl = noteUrl;
           this.currentPageTitle = noteTitle; // Store as fallback
           
           this.elements.noteTitleInput.value = noteTitle;
