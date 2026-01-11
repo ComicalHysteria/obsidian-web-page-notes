@@ -174,7 +174,7 @@ class ObsidianAPI {
             if (titleMatch && urlMatch) {
               // Extract note content (everything after the header)
               const metadataMatch = content.match(NOTE_METADATA_REGEX);
-              const noteContent = metadataMatch ? content.substring(metadataMatch[0].length) : content;
+              const noteContent = metadataMatch ? content.substring(metadataMatch[0].length).trim() : content;
               
               notes.push({
                 filename: file,
@@ -213,6 +213,7 @@ class SidePanelApp {
     this.viewingMode = 'current'; // 'current' or 'saved'
     this.titleUpdateTimeout = null; // For reverting visual feedback
     this.allNotes = []; // Store all notes for filtering
+    this.searchDebounceTimeout = null; // For debouncing search input
     
     this.elements = {
       pageTitle: document.getElementById('page-title'),
@@ -352,7 +353,13 @@ class SidePanelApp {
 
     // Handle search input for filtering notes
     this.elements.notesSearchInput.addEventListener('input', () => {
-      this.filterNotes();
+      // Debounce the search to avoid excessive filtering
+      if (this.searchDebounceTimeout) {
+        clearTimeout(this.searchDebounceTimeout);
+      }
+      this.searchDebounceTimeout = setTimeout(() => {
+        this.filterNotes();
+      }, 150); // 150ms debounce delay
     });
   }
 
@@ -758,7 +765,8 @@ class SidePanelApp {
       let score = 0;
       const titleLower = note.title.toLowerCase();
       const urlLower = note.url.toLowerCase();
-      const contentLower = note.content.toLowerCase();
+      // Limit content search to first 1000 characters for performance
+      const contentLower = note.content.substring(0, 1000).toLowerCase();
 
       // Title matches (highest priority - score 3)
       if (titleLower.includes(query)) {
