@@ -662,9 +662,9 @@ class SidePanelApp {
       // Create a safe filename from URL
       const urlObj = new URL(this.currentUrl);
       const domain = urlObj.hostname.replace(/^www\./, '');
-      const path = urlObj.pathname.replace(/\//g, '-').replace(/^-/, '').replace(/-$/, '') || 'index';
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-      const filename = `${domain}${path}_${timestamp}.html`;
+      const pathPart = urlObj.pathname.replace(/\//g, '-').replace(/^-/, '').replace(/-$/, '') || 'index';
+      const datePart = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+      const filename = `${domain}${pathPart}_${datePart}.html`;
 
       // Create a blob from the HTML
       const blob = new Blob([pageHtml], { type: 'text/html' });
