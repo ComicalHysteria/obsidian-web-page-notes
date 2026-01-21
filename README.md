@@ -10,6 +10,7 @@ Unofficial Chrome extension for Obsidian that lets you take notes for webpages i
 - 🔗 Clickable URLs to easily navigate to associated webpages
 - 🔄 Automatically syncs with Obsidian via the Local REST API plugin
 - 💾 Saves notes as Markdown files in your Obsidian vault
+- 📥 Save entire web pages for offline viewing (archival feature)
 - ⚡ Auto-save functionality that saves as you type (configurable)
 - 🛡️ Automatic save on exit to prevent data loss when closing the side panel
 - 🔍 Retrieves previously created notes for any webpage
@@ -69,10 +70,22 @@ _Extension is pending publication_
 5. Write or edit your notes in Markdown format
 6. Your notes will auto-save as you type (if enabled), or click "Save to Obsidian" to save manually
 7. Notes are automatically saved when you close the side panel, preventing data loss
-8. Click "📚 All Notes" to view all your saved notes with their titles and URLs
-9. Click on any note in the list to view and edit it directly
-10. Click the URL link to open the associated webpage in a new tab
-11. Your notes are saved in your Obsidian vault under the configured folder
+8. Click "💾 Save Page Offline" to download the entire webpage as an HTML file for offline viewing
+9. Click "📚 All Notes" to view all your saved notes with their titles and URLs
+10. Click on any note in the list to view and edit it directly
+11. Click the URL link to open the associated webpage in a new tab
+12. Your notes are saved in your Obsidian vault under the configured folder
+
+### Offline Page Archival
+
+The extension allows you to save web pages for offline viewing:
+- Click the "💾 Save Page Offline" button in the side panel
+- The entire webpage HTML will be downloaded to your computer
+- Files are saved with the format: `domain-path_YYYY-MM-DD.html`
+- Saved pages can be opened in any browser, even when offline
+- Perfect for archiving important pages that might be taken down or for offline access
+
+Example saved filename: `github.com-obsidian-plugin_2026-01-21.html`
 
 ### Notes Organization
 
@@ -94,6 +107,7 @@ Example: `github.com-obsidian-plugin.md`
 - **Auto-Save**: Automatically saves notes as you type (with configurable delay, only in current page mode)
 - **Save on Exit**: Automatically saves notes when closing or hiding the side panel (only in current page mode)
 - **Save Button**: Manually saves notes to Obsidian
+- **Save Page Offline Button**: Downloads the entire webpage as HTML for offline viewing and archival
 - **Refresh Button**: Reloads the note from Obsidian
 - **All Notes View**: Click to view all your saved notes; click any note to view and edit it
 - **Viewing Modes**: 

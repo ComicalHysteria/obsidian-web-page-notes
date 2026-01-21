@@ -228,6 +228,7 @@ class SidePanelApp {
       noteTitleStatus: document.getElementById('note-title-status'),
       noteEditor: document.getElementById('note-editor'),
       saveBtn: document.getElementById('save-btn'),
+      saveOfflineBtn: document.getElementById('save-offline-btn'),
       refreshBtn: document.getElementById('refresh-btn'),
       settingsBtn: document.getElementById('settings-btn'),
       connectionStatus: document.getElementById('connection-status'),
@@ -271,6 +272,7 @@ class SidePanelApp {
 
   attachEventListeners() {
     this.elements.saveBtn.addEventListener('click', () => this.saveNote());
+    this.elements.saveOfflineBtn.addEventListener('click', () => this.savePageOffline());
     this.elements.refreshBtn.addEventListener('click', () => this.refreshNote());
     this.elements.settingsBtn.addEventListener('click', () => chrome.runtime.openOptionsPage());
     
@@ -623,6 +625,65 @@ class SidePanelApp {
       } else {
         this.isLoading = false;
       }
+    }
+  }
+
+  async savePageOffline() {
+    if (!this.currentUrl) {
+      this.showWarning('No page URL available');
+      return;
+    }
+
+    this.setLoading(true);
+    
+    try {
+      // Get the active tab
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      if (!tab || !tab.id) {
+        throw new Error('Could not access active tab');
+      }
+
+      // Send message to background script to capture page HTML
+      const response = await chrome.runtime.sendMessage({
+        type: 'CAPTURE_PAGE_HTML',
+        tabId: tab.id
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Could not capture page content');
+      }
+
+      const pageHtml = response.html;
+      
+      // Create a safe filename from URL
+      const urlObj = new URL(this.currentUrl);
+      const domain = urlObj.hostname.replace(/^www\./, '');
+      const pathPart = urlObj.pathname.replace(/\//g, '-').replace(/^-/, '').replace(/-$/, '') || 'index';
+      const datePart = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+      const filename = `${domain}${pathPart}_${datePart}.html`;
+
+      // Create a blob from the HTML
+      const blob = new Blob([pageHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+
+      // Download the file
+      await chrome.downloads.download({
+        url: url,
+        filename: filename,
+        saveAs: true
+      });
+
+      this.showSuccess('Page saved for offline viewing!');
+      
+      // Clean up the blob URL
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+    } catch (error) {
+      console.error('Error saving page offline:', error);
+      this.showError('Failed to save page offline: ' + error.message);
+    } finally {
+      this.setLoading(false);
     }
   }
 
