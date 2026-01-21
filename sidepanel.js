@@ -644,20 +644,17 @@ class SidePanelApp {
         throw new Error('Could not access active tab');
       }
 
-      // Inject a script to get the full page HTML
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => {
-          // Get the full HTML including DOCTYPE
-          return '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-        }
+      // Send message to background script to capture page HTML
+      const response = await chrome.runtime.sendMessage({
+        type: 'CAPTURE_PAGE_HTML',
+        tabId: tab.id
       });
 
-      if (!results || !results[0] || !results[0].result) {
-        throw new Error('Could not capture page content');
+      if (!response.success) {
+        throw new Error(response.error || 'Could not capture page content');
       }
 
-      const pageHtml = results[0].result;
+      const pageHtml = response.html;
       
       // Create a safe filename from URL
       const urlObj = new URL(this.currentUrl);
